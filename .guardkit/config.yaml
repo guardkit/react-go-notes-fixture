@@ -16,6 +16,11 @@ toolchain:
   # result. Byte-identical to the template (GuardKit 4f368202).
   requires_ran_marker: true
   ran_marker_regex: '(?ms)\A(?!.*^ok\s+\S+\s+\(cached\))(?=.*^\s*--- PASS: \S+)(?=.*Tests\b[^\n]*?[1-9][0-9]* passed)'
+  # Coverage is measured, never thresholded: exit 0 means the tests passed
+  # with coverage measured. Reports stay in git-ignored coverage/ folders.
+  # Mirrors the template (GuardKit 7778352e).
+  coverage: "bash scripts/coverage.sh"
+  coverage_timeout: 1800
   # The connected browser/API/PostgreSQL/Keycloak journey on a fresh,
   # per-run compose project (scripts/check-feature.sh). It ends with a
   # "check-feature: PASS" line only after Playwright passed.
@@ -31,6 +36,9 @@ toolchain:
       test_timeout: 600
       requires_ran_marker: true
       ran_marker_regex: 'Tests\b[^\n]*?[1-9][0-9]* passed'
+      # Vitest with V8 coverage; exit 0 when measured and the tests pass.
+      coverage: "npm run coverage"
+      coverage_timeout: 600
       runtime:
         node: "22.23.2"
     api:
@@ -42,6 +50,10 @@ toolchain:
       # prints no `--- PASS:` line) and nothing was replayed from the cache
       # (with -v a replay reprints old `--- PASS:` lines).
       ran_marker_regex: '(?ms)\A(?!.*^ok\s+\S+\s+\(cached\))(?=.*^\s*--- PASS: \S+)'
+      # Written to files, not piped: the coach runs /bin/sh, where a pipe
+      # would hide a failing `go tool cover`.
+      coverage: "export GOTOOLCHAIN=local GOWORK=off GOFLAGS=-mod=readonly && mkdir -p coverage && go test -race -count=1 -coverprofile=coverage/go.out ./... && go tool cover -func=coverage/go.out > coverage/go-func.txt && tail -n 1 coverage/go-func.txt"
+      coverage_timeout: 900
       runtime:
         go: "1.26.9"
 

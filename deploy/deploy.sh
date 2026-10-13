@@ -158,7 +158,9 @@ if [[ "$mode" == teardown ]]; then
 fi
 
 # --- Settings for this project ---------------------------------------------------
-mkdir -p "$(dirname "$state_file")"
+# The settings folder is private from the moment it exists; the settings file
+# is created under umask 077 below (the umask is set before it is opened).
+(umask 077 && mkdir -p "$(dirname "$state_file")")
 chmod 700 "$(dirname "$state_file")"
 if [[ ! -f "$state_file" ]]; then
   instance="$(date -u +%Y%m%d%H%M%S)-$(rand_hex 6)"

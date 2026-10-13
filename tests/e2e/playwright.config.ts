@@ -1,15 +1,15 @@
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
-// The stack is started by scripts/check-feature.sh (or by Forge's preview leg)
-// and addressed through NOTES_BASE_URL. There is deliberately no `webServer`
-// block, so Playwright can never start or reuse a server of its own
-// (the design's `reuseExistingServer: false`); global-setup.ts also refuses to
-// run unless the responding instance reports this run's identity.
+// The stack is started by scripts/check-feature.sh (the canonical path) or
+// by Forge's preview leg, and addressed through NOTES_BASE_URL. A direct
+// `npx playwright test` without it gets its own isolated stack from
+// global-setup.ts, which sets NOTES_BASE_URL before the workers load this
+// file again. There is deliberately no `webServer` block, so Playwright never
+// reuses a server it did not start for this run (the design's
+// `reuseExistingServer: false`); global-setup.ts also refuses to run unless
+// the responding instance reports this run's identity.
 const baseURL = process.env.NOTES_BASE_URL;
-if (!baseURL) {
-  throw new Error("NOTES_BASE_URL is required (the stack's browser URL)");
-}
 const evidence = path.resolve(
   process.env.FACTORY_EVIDENCE_DIR ??
     path.join(import.meta.dirname, "..", "..", "test-results"),

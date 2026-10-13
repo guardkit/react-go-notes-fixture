@@ -37,8 +37,10 @@ provider:
 | `compose.preview.yaml` | Adds the token-guarded public listener for a retained preview. |
 | `infra/` | The postgres init script and the proxy's Caddyfile. |
 | `scripts/check.sh` | The aggregate native check: gofmt, `go mod verify`, vet, Staticcheck, race tests with `-v` (including token and contract tests), Go build, contract drift, `tsc`, ESLint, Prettier, Vitest, the Vite build, end-to-end typecheck, the driver's verdict tests and shell syntax. The declared ran-markers, byte-identical to the template (GuardKit `4f368202`), need a Go `--- PASS:` line and no cached `ok … (cached)` replay, and the root also needs Vitest's `Tests … N passed`. |
-| `scripts/check-feature.sh` | The connected check (see below). |
-| `scripts/migrate.sh`, `seed.sh`, `keycloak-config.sh`, `build-artifacts.sh` | The explicit steps it uses. |
+| `scripts/check-feature.sh` | The connected check (see below). Smoke gates use `bash scripts/check.sh`. Browser journeys are the declared `feature_check` (`bash scripts/check-feature.sh`, timeout 1800 s), which GuardKit runs itself after the last wave with its own long limit; do not put them in `smoke_gates`. If a plan must, it sets `timeout: 600`. (Also in `.claude/rules`.) |
+| `scripts/coverage.sh` | The declared coverage (root): both suites, totals printed. Measured, never thresholded: exit 0 means the tests passed with coverage measured. The `web` component declares `npm run coverage` (Vitest with V8 coverage) and the `api` component the Go `-coverprofile` and `go tool cover -func` total. Reports stay in git-ignored `coverage/` folders. |
+| `scripts/stack-lib.sh`, `scripts/stack.sh` | The disposable stack's lifecycle pieces, shared by `check-feature.sh` and by a direct Playwright run (below). |
+| `scripts/migrate.sh`, `seed.sh`, `keycloak-config.sh`, `build-artifacts.sh` | The explicit steps they use. |
 | `tests/e2e` | Playwright 1.63.0. Chromium runs the full journey: sign in on the real Keycloak page, create a note, reload and see it, sign out, and get 401 from the API anonymously or with a forged token. Firefox and WebKit run a sign-in smoke. HTML and JSON reports, video always for the journey, traces kept on failure. |
 | `deploy/` | `profile.yaml` in Forge's format, with `identity`, the shared `sandbox` and the `preview` section (`enabled`, `slots`, `app_ttl_hours`, `evidence_days`, `slot_wait_minutes`, as Forge's parser reads them). `settings.sh` lists every signal Forge sends in each leg and maps it to one mode, project, port and settings file. `deploy.sh` handles each mode; see "Deploy modes" below. Then the health check. |
 | `qa/live-gate-driver.mjs` | Runs the same journey against a running instance and prints Forge's results envelope. Its verdict comes from `qa/journey-report.mjs` (tested by `node --test` in `check.sh`). If the key journey's video, every screenshot, or the HTML report is missing or empty on disk, a passing run is reported as `instrument_fail`, never `pass`; a failing run stays `fail`. In a preview it addresses `http://127.0.0.1:<FACTORY_PREVIEW_INTERNAL_PORT>`. The envelope carries `app_url`, `report_ref`, `screenshot_refs`, `media_refs` (video), `trace_refs` and `outcome` (passed, failed, skipped, flaky; null when unknown), with references relative to the evidence folder. |
@@ -129,6 +131,23 @@ the compose network.
    It ignores further interrupts while doing so, and runs `compose down` in its own
    session (`setsid`). A second Ctrl-C or TERM, even one sent to the whole process
    group, cannot abort it.
+
+**A direct `npx playwright test`.** It is not the canonical path, but it works on its
+own:
+- With `NOTES_BASE_URL` unset, `tests/e2e/global-setup.ts` brings up an isolated stack
+  with `scripts/stack.sh up`. It uses the same pieces as above: project `notes-pw-<run>`,
+  owner `${GUARDKIT_RUN_OWNER:-notes-direct-<run>}`, a free loopback port, bounded
+  readiness with the run-identity check, fresh migrations, the seed and the realm.
+- The returned global teardown removes the stack after a pass, a failure or an interrupt,
+  including an interrupt during the identity check that follows the start. An `up` that
+  fails part-way removes what it started.
+- Build, compose, migration and realm output goes to `.notes-runs/<run>/stack.log`, and
+  only short status lines go to the console. A run that is killed (closed pipes) cannot
+  stop its own teardown.
+- Without a reachable Docker, the run is refused with a plain message that points to
+  `scripts/check-feature.sh`.
+- With `NOTES_BASE_URL` set, as `check-feature.sh` and the preview driver set it, nothing
+  changes.
 
 Every container, network and volume carries `guardkit.fixture.owner=$GUARDKIT_RUN_OWNER`,
 with a run-unique fallback. If a killed run leaves anything behind, the factory's
