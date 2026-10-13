@@ -1,0 +1,23 @@
+# The public review-preview listener. Only this candidate's link token opens it:
+# ?preview=<token> sets a cookie named for this slot and redirects to the app's
+# root (always `/`, never the requested path, so the link cannot be turned into
+# an open redirect); any other or missing token gets 410.
+:{$FACTORY_PREVIEW_PORT} {
+	@token_ok query preview={$FACTORY_PREVIEW_TOKEN}
+	handle @token_ok {
+		header Set-Cookie "factory_preview_{$FACTORY_PREVIEW_PORT}={$FACTORY_PREVIEW_TOKEN}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=86400"
+		header Cache-Control no-store
+		redir * / 302
+	}
+	@token_other query preview=*
+	handle @token_other {
+		respond "410 — this preview link is for a different or expired candidate" 410
+	}
+	@cookie_ok header_regexp preview_cookie Cookie "(^|;[ ]*)factory_preview_{$FACTORY_PREVIEW_PORT}={$FACTORY_PREVIEW_TOKEN}(;|$)"
+	handle @cookie_ok {
+		import app https {$FACTORY_PREVIEW_PUBLIC_HOST} {$FACTORY_PREVIEW_PORT}
+	}
+	handle {
+		respond "410 — this preview link is for a different or expired candidate" 410
+	}
+}

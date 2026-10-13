@@ -1,0 +1,139 @@
+# The source of the notes API contract. apps/web/src/api-types.ts is generated
+# from this file (`npm run contract:generate`) and `npm run contract:check`
+# fails when the committed file has drifted. The Go handler tests validate the
+# implemented responses against this same file (contract_test.go).
+openapi: 3.0.3
+info:
+  title: Notes fixture API
+  version: 1.0.0
+  description: Neutral verification fixture. Every note belongs to the token's `sub`.
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          description: Process liveness and the run this instance belongs to.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /api/notes:
+    get:
+      operationId: listNotes
+      security:
+        - bearer: []
+      responses:
+        "200":
+          description: The signed-in owner's notes, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteList"
+        "401":
+          $ref: "#/components/responses/SignInRequired"
+        "500":
+          $ref: "#/components/responses/Unavailable"
+    post:
+      operationId: createNote
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewNote"
+      responses:
+        "201":
+          description: The saved note.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "400":
+          description: The body or label is not acceptable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/SignInRequired"
+        "500":
+          $ref: "#/components/responses/Unavailable"
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    SignInRequired:
+      description: No token, or a token that is expired, unsigned, for another audience or from an unaccepted issuer.
+      headers:
+        WWW-Authenticate:
+          required: true
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unavailable:
+      description: Persistence failed; no detail is disclosed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status, run]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        run:
+          type: string
+    NewNote:
+      type: object
+      additionalProperties: false
+      required: [label]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+    Note:
+      type: object
+      additionalProperties: false
+      required: [id, label, createdAt]
+      properties:
+        id:
+          type: string
+          pattern: "^[0-9]+$"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        createdAt:
+          type: string
+          format: date-time
+    NoteList:
+      type: object
+      additionalProperties: false
+      required: [notes]
+      properties:
+        notes:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/Note"
+    Error:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message:
+          type: string

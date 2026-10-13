@@ -1,0 +1,63 @@
+import path from "node:path";
+import { defineConfig, devices } from "@playwright/test";
+
+// The stack is started by scripts/check-feature.sh (or by Forge's preview leg)
+// and addressed through NOTES_BASE_URL. There is deliberately no `webServer`
+// block, so Playwright can never start or reuse a server of its own
+// (the design's `reuseExistingServer: false`); global-setup.ts also refuses to
+// run unless the responding instance reports this run's identity.
+const baseURL = process.env.NOTES_BASE_URL;
+if (!baseURL) {
+  throw new Error("NOTES_BASE_URL is required (the stack's browser URL)");
+}
+const evidence = path.resolve(
+  process.env.FACTORY_EVIDENCE_DIR ??
+    path.join(import.meta.dirname, "..", "..", "test-results"),
+);
+// The key journey is always recorded; FACTORY_RECORD_VIDEO=1 records the
+// cross-browser smoke too.
+const recordAll = process.env.FACTORY_RECORD_VIDEO === "1";
+const smokeVideo = recordAll ? "on" : "retain-on-failure";
+
+export default defineConfig({
+  testDir: "./specs",
+  globalSetup: "./global-setup.ts",
+  forbidOnly: true,
+  retries: 0,
+  workers: 1,
+  fullyParallel: false,
+  timeout: 120_000,
+  expect: { timeout: 20_000 },
+  outputDir: path.join(evidence, "test-output"),
+  reporter: [
+    ["list"],
+    [
+      "html",
+      { outputFolder: path.join(evidence, "playwright-report"), open: "never" },
+    ],
+    ["json", { outputFile: path.join(evidence, "results.json") }],
+  ],
+  use: {
+    baseURL,
+    trace: "retain-on-failure",
+    screenshot: "on",
+    ignoreHTTPSErrors: false,
+  },
+  projects: [
+    {
+      name: "chromium-journey",
+      testMatch: /journey\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], video: "on" },
+    },
+    {
+      name: "firefox-smoke",
+      testMatch: /smoke\.spec\.ts/,
+      use: { ...devices["Desktop Firefox"], video: smokeVideo },
+    },
+    {
+      name: "webkit-smoke",
+      testMatch: /smoke\.spec\.ts/,
+      use: { ...devices["Desktop Safari"], video: smokeVideo },
+    },
+  ],
+});

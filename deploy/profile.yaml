@@ -1,0 +1,109 @@
+# deploy-profile (guardkit qa kind: deploy-profile) for the neutral notes
+# fixture. Format: Forge src/forge/deploy/profile.py. The stack is
+# compose.yaml (PostgreSQL, Keycloak, the Go API and the Caddy proxy) driven by
+# the vetted wrapper deploy/deploy.sh; see that script for every mode.
+#
+# No `cwd`: the factory runs every step of a sandboxed project in a tree laid
+# out at the commit being deployed, so the scripts find their own folder.
+#
+# secret_injection is empty: deploy/deploy.sh generates per-project database,
+# admin and test passwords into a mode-600 settings file (deploy/settings.sh):
+# for the live app and candidate under NOTES_STATE_DIR, default
+# ~/.local/state/react-go-notes; for a preview inside its own laid-out tree.
+#
+# Every signal Forge sends this project's steps, per leg, is listed in
+# deploy/settings.sh. The live app is project notes-live on loopback port
+# 8960 inside the sandbox (deploy/settings.sh), because the promote leg
+# carries no overlay.
+format_version: "1.0"
+env_id: notes
+compose:
+  file: compose.yaml
+  script: deploy/deploy.sh
+# The names deploy/deploy.sh reads and prints (forge.pipeline.deployment_identity).
+identity:
+  setting: DEPLOY_IDENTITY
+  reported_as: DEPLOYED_IDENTITY
+  checked_as: CHECKED_ARTIFACT
+  artifact_setting: DEPLOY_ARTIFACT
+  asked_with: RUNNING_IDENTITY
+  running_as: RUNNING_IDENTITY
+# The factory's one shared sandbox, the same one the factory's api_test
+# reference project deploys into: a Docker Sandbox (`sbx`) whose own engine
+# runs this stack, and which also carries the factory's build runner and
+# deploy helper. Those two services belong to the sandbox, not to this
+# project, so `sidecar_publish`, `runner_publish` and `receipts_path` are not
+# declared here. The factory's coordinator reaches the sandbox through its own
+# settings (`planning.sandboxes`), which registering a project fills in.
+#   memory, cpus  -- the shared sandbox's size (as api_test declares it)
+#   publish       -- this project's ports on the sandbox host's loopback:
+#                    8960 live, 8961 candidate, 8950 and 8951 preview slots.
+#                    None collides with api_test's 8901, 8902, 8924 or 8925;
+#                    8970 and 8971 (preview internal listeners) stay inside.
+#   allow_network -- what this project's deploy needs to reach: the npm
+#                    registry and the Go module proxy and checksum database
+#                    (scripts/install.sh). Base images are loaded beforehand.
+# These settings take effect when the sandbox is created or its ports and
+# network rules are changed; declaring them here changes nothing on its own.
+sandbox:
+  name: api-test-deploy
+  memory: 12g
+  cpus: 6
+  publish: ["127.0.0.1:8960:8960", "127.0.0.1:8961:8961", "127.0.0.1:8950:8950", "127.0.0.1:8951:8951"]
+  allow_network: ["registry.npmjs.org", "proxy.golang.org", "sum.golang.org"]
+hosts:
+  - host: localhost
+    role: app
+secret_injection: []
+models_required: []
+health_checks:
+  - cmd: "deploy/healthcheck.sh"
+live_gate:
+  driver: ["node", "qa/live-gate-driver.mjs"]
+  gates: []
+  timeout_seconds: 900
+  env:
+    NOTES_BASE_URL: "http://127.0.0.1:8960"
+# The candidate is its own named project; CANDIDATE_DOWN refuses without it.
+candidate:
+  env:
+    CANDIDATE_PORT: "8961"
+    COMPOSE_PROJECT_NAME: "notes-live-cand"
+    NOTES_BASE_URL: "http://127.0.0.1:8961"
+  keep: false
+# Review preview before the merge decision. Read by Forge's preview
+# leg (deploy/review_preview.py, parser DeployPreview); a profile without this
+# section keeps today's flow. For each preview Forge passes only its fixed
+# overlay to deploy/deploy.sh (with PREVIEW=1), deploy/healthcheck.sh and the
+# live-gate driver:
+#   COMPOSE_PROJECT_NAME          <env_id>-pv<slot index>
+#   FACTORY_RESOURCE_LABEL        forge.preview.lease=<lease id>
+#   FACTORY_PREVIEW_PORT          the slot port (public listener)
+#   FACTORY_PREVIEW_INTERNAL_PORT the slot's internal port (VM loopback only)
+#   FACTORY_PREVIEW_URL           https://<public host>:<slot port>
+#   FACTORY_PREVIEW_TOKEN         the lease's random link token
+#   FACTORY_EVIDENCE_DIR          the folder the journey's evidence goes in
+#   FACTORY_RECORD_VIDEO          1, for the journey
+# Everything else is the project's own: deploy.sh's preview mode shows the
+# test password in the preview's sign-in hint, and the driver addresses
+# http://127.0.0.1:<FACTORY_PREVIEW_INTERNAL_PORT>.
+# Teardown: Forge removes a preview by its label (containers, networks,
+# volumes and the images built for it, which carry the same label) and removes
+# the laid-out tree, which holds the preview's settings file (.notes-state/).
+# It does not run deploy.sh for that; TEARDOWN=1 is for manual use and the
+# controls.
+# The public address is not part of this repository: each slot's
+# https://<host>:<port> comes from the coordinator's own private setting
+# `review_preview.public_host`, so no private host name is published here.
+preview:
+  enabled: true
+  slots:
+    - port: 8950
+      internal_port: 8970
+    - port: 8951
+      internal_port: 8971
+  # The preview, and the merge card's Approve, last 24 hours.
+  app_ttl_hours: 24
+  evidence_days: 14
+  # Longest wait for a free slot before preparation fails.
+  slot_wait_minutes: 30

@@ -1,0 +1,17 @@
+# Build outputs, dependencies and evidence never show as untracked files.
+node_modules/
+apps/web/node_modules/
+tools/contract/node_modules/
+tests/e2e/node_modules/
+apps/web/dist/
+apps/api/bin/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+# Per-run working folders of check-feature.sh and the live-gate driver.
+.notes-runs/
+qa/evidence/
+.notes-state/
+.factory-evidence/
+.cache/

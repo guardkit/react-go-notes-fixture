@@ -1,0 +1,16 @@
+# Overlay for a retained review preview: adds the public listener on the slot
+# port. Used as `-f compose.yaml -f compose.preview.yaml` by deploy/deploy.sh
+# only when FACTORY_PREVIEW_PORT and FACTORY_PREVIEW_URL are set. Compose
+# appends these ports to the internal one.
+services:
+  proxy:
+    environment:
+      FACTORY_PREVIEW_MODE: "on"
+      FACTORY_PREVIEW_PORT: "${FACTORY_PREVIEW_PORT:?FACTORY_PREVIEW_PORT is required}"
+      FACTORY_PREVIEW_PUBLIC_HOST: "${FACTORY_PREVIEW_PUBLIC_HOST:?FACTORY_PREVIEW_PUBLIC_HOST is required}"
+      FACTORY_PREVIEW_TOKEN: "${FACTORY_PREVIEW_TOKEN:?FACTORY_PREVIEW_TOKEN is required}"
+    ports:
+      # The sandbox's `sbx ports` forwards the slot from the sandbox host's
+      # loopback into the VM; a private HTTPS front on that host (for example
+      # Tailscale serve) exposes it to reviewers on the private network.
+      - "${FACTORY_PREVIEW_BIND:-0.0.0.0}:${FACTORY_PREVIEW_PORT:?FACTORY_PREVIEW_PORT is required}:${FACTORY_PREVIEW_PORT:?FACTORY_PREVIEW_PORT is required}"

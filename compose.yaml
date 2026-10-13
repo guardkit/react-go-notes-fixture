@@ -1,0 +1,151 @@
+# The notes fixture's stack. Always started with an explicit, per-run project
+# name (-p) by scripts/check-feature.sh or deploy/deploy.sh; never by hand
+# with the default name.
+#
+# - No container_name, no external volumes, no fixed host ports: the only
+#   published port is NOTES_INTERNAL_PORT on loopback (and, with
+#   compose.preview.yaml, the preview slot port).
+# - Every container, network and volume carries the one ownership label
+#   FACTORY_RESOURCE_LABEL (key=value) supplied by whoever starts the stack:
+#   guardkit.fixture.owner=<owner> for disposable checks,
+#   forge.preview.lease=<lease> for retained previews.
+# - Base images are pinned by digest; the three built images copy files only.
+# - Every service has a hard memory limit (and no swap beyond it), so a stack
+#   fits a 12 GiB sandbox VM and Keycloak's JVM never sizes its heap from the
+#   host's memory.
+
+x-owner-label: &owner-label
+  - "${FACTORY_RESOURCE_LABEL:?FACTORY_RESOURCE_LABEL must be set as key=value}"
+
+services:
+  postgres:
+    build:
+      context: infra/postgres
+      labels: *owner-label
+    image: "${NOTES_IMAGE_PREFIX:-react-go-notes}-postgres:${NOTES_IMAGE_TAG:?NOTES_IMAGE_TAG is required}"
+    mem_limit: 512m
+    memswap_limit: 512m
+    labels: *owner-label
+    environment:
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+      APP_DB_PASSWORD: "${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}"
+      KEYCLOAK_DB_PASSWORD: "${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # TCP, not the socket: during first-start init the image runs a
+      # temporary socket-only server, which must not count as ready.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+
+  keycloak:
+    # Production mode (`start`), not `start-dev`: start-dev also switches to an
+    # embedded dev database and relaxes production defaults, so what it proves
+    # would not be what a deployment runs. Hostname behaviour is set
+    # explicitly instead: no fixed hostname, KC_HOSTNAME_STRICT=false and
+    # forwarded headers from the proxy, so each listener gets its own issuer.
+    image: quay.io/keycloak/keycloak:26.7.4@sha256:82a77884f3af238beab1e7afd63b5f530e1b5c0590bd7aa60b40a40463e29b2c
+    command: ["start"]
+    mem_limit: 1g
+    memswap_limit: 1g
+    labels: *owner-label
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: "${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}"
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_PORT: "8080"
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: "false"
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}"
+      # Replaces Keycloak's default heap options (a share of all visible
+      # memory): at most 512 MiB of heap inside the 1 GiB limit.
+      JAVA_OPTS_KC_HEAP: "-Xms128m -Xmx512m"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The image has no curl; bash talks to the management port directly.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /auth/health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"status": *"UP"' <&3
+      interval: 3s
+      timeout: 5s
+      retries: 60
+      start_period: 120s
+
+  api:
+    build:
+      context: apps/api
+      labels: *owner-label
+    image: "${NOTES_IMAGE_PREFIX:-react-go-notes}-api:${NOTES_IMAGE_TAG:?NOTES_IMAGE_TAG is required}"
+    mem_limit: 256m
+    memswap_limit: 256m
+    labels:
+      - "${FACTORY_RESOURCE_LABEL:?FACTORY_RESOURCE_LABEL must be set as key=value}"
+      # The identity text Forge handed the deploy step (it may carry '@',
+      # which an image tag cannot), read back by RUNNING_IDENTITY.
+      - "react-go-notes.identity=${NOTES_IDENTITY:-}"
+    read_only: true
+    environment:
+      API_LISTEN_ADDR: ":3000"
+      DATABASE_URL: "postgres://notes_app:${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}@postgres:5432/notes?sslmode=disable"
+      # Exact issuers this run accepts (internal, plus public for a preview).
+      OIDC_ISSUERS: "${OIDC_ISSUERS:?OIDC_ISSUERS is required}"
+      OIDC_AUDIENCE: "${OIDC_AUDIENCE:-notes-api}"
+      # Keys come straight from Keycloak on the compose network.
+      OIDC_JWKS_URL: "http://keycloak:8080/auth/realms/${NOTES_REALM:?NOTES_REALM is required}/protocol/openid-connect/certs"
+      NOTES_RUN_ID: "${NOTES_RUN_ID:?NOTES_RUN_ID is required}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/notes-api", "-healthcheck"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  proxy:
+    build:
+      context: .
+      dockerfile: infra/proxy/Dockerfile
+      labels: *owner-label
+    image: "${NOTES_IMAGE_PREFIX:-react-go-notes}-proxy:${NOTES_IMAGE_TAG:?NOTES_IMAGE_TAG is required}"
+    mem_limit: 128m
+    memswap_limit: 128m
+    labels: *owner-label
+    read_only: true
+    tmpfs:
+      - /data
+      - /config
+    environment:
+      NOTES_INTERNAL_PORT: "${NOTES_INTERNAL_PORT:?NOTES_INTERNAL_PORT is required}"
+      NOTES_REALM: "${NOTES_REALM:?NOTES_REALM is required}"
+      NOTES_CLIENT_ID: "${NOTES_CLIENT_ID:-notes-web}"
+      NOTES_RUN_ID: "${NOTES_RUN_ID:?NOTES_RUN_ID is required}"
+      NOTES_SIGNIN_HINT: "${NOTES_SIGNIN_HINT:-Sign in with a test user.}"
+      FACTORY_PREVIEW_MODE: "off"
+    ports:
+      - "127.0.0.1:${NOTES_INTERNAL_PORT:?NOTES_INTERNAL_PORT is required}:${NOTES_INTERNAL_PORT:?NOTES_INTERNAL_PORT is required}"
+    depends_on:
+      api:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+networks:
+  default:
+    labels: *owner-label
+
+volumes:
+  pgdata:
+    labels: *owner-label

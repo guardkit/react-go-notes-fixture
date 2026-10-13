@@ -1,0 +1,65 @@
+# One proxy, up to two listeners:
+# - the internal listener on NOTES_INTERNAL_PORT, reached as
+#   http://127.0.0.1:<port>/ inside the VM (checks and the card's journey);
+# - the public listener on FACTORY_PREVIEW_PORT, only when
+#   FACTORY_PREVIEW_MODE=on (compose.preview.yaml), reached through a private
+#   HTTPS front as https://<public host:port>/, guarded by the preview link token.
+# Keycloak takes its browser-facing address from the X-Forwarded-* headers set
+# here (KC_PROXY_HEADERS=xforwarded); each listener overwrites them, so a
+# client can never choose the issuer.
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+(app) {
+	# Forwarding headers a client could use to pose as another address are
+	# dropped; the proxy sets its own X-Forwarded-* per listener below.
+	request_header -Forwarded
+	request_header -X-Forwarded-Prefix
+	request_header -X-Forwarded-Server
+	request_header -X-Forwarded-Ssl
+	request_header -X-Real-IP
+	# Keycloak's admin console is never served through the proxy (any path
+	# starting /auth/admin, including ;-parameter and ..; variants); the
+	# configuration script talks to Keycloak inside its own container.
+	@admin path /auth/admin*
+	handle @admin {
+		respond "Not found" 404
+	}
+	handle /auth/* {
+		reverse_proxy keycloak:8080 {
+			header_up X-Forwarded-Proto {args[0]}
+			header_up X-Forwarded-Host {args[1]}
+			header_up X-Forwarded-Port {args[2]}
+			# The preview link cookie never reaches an upstream.
+			header_up Cookie "[ ]*factory_preview_[0-9]+=[^;]*;?" ""
+		}
+	}
+	handle /api/* {
+		reverse_proxy api:3000 {
+			header_up X-Forwarded-Proto {args[0]}
+			header_up X-Forwarded-Host {args[1]}
+			header_up X-Forwarded-Port {args[2]}
+			header_up Cookie "[ ]*factory_preview_[0-9]+=[^;]*;?" ""
+		}
+	}
+	handle /config.json {
+		header Content-Type application/json
+		header Cache-Control no-store
+		respond `{"realm":"{$NOTES_REALM}","clientId":"{$NOTES_CLIENT_ID}","runId":"{$NOTES_RUN_ID}","signInHint":"{$NOTES_SIGNIN_HINT}"}` 200
+	}
+	handle {
+		header Cache-Control no-store
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+:{$NOTES_INTERNAL_PORT} {
+	import app http 127.0.0.1:{$NOTES_INTERNAL_PORT} {$NOTES_INTERNAL_PORT}
+}
+
+import /etc/caddy/public-{$FACTORY_PREVIEW_MODE:off}.caddy

@@ -1,0 +1,4 @@
+# Only the proxy image builds from the fixture root.
+*
+!apps/web/dist
+!infra/proxy
