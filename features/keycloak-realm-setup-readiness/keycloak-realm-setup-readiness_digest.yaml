@@ -9,7 +9,7 @@ scenarios:
     sentence: "When Keycloak briefly refuses the connection a few times and then works, the realm setup keeps trying and finishes successfully."
   - title: "The admin password is never placed on a command line"
     tags: ["@key-example"]
-    sentence: "The admin password is passed to the login in a way that never shows up on any command line."
+    sentence: "The admin password is passed to the login in a way that never shows up in the realm setup's output."
   - title: "A 503 response just inside the retryable set is retried"
     tags: ["@boundary"]
     sentence: "A not-ready error, which is one of the two conditions allowed to be retried, is retried until Keycloak answers."
