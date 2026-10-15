@@ -7,21 +7,6 @@ scenarios:
   - title: "Count is sourced from the same collection that renders the list"
     tags: ["@key-example"]
     sentence: "The number shown above the list always matches the notes actually rendered in the list."
-  - title: "Empty notes list shows a zero count above the list"
-    tags: ["@boundary"]
-    sentence: "When there are no notes, the summary still appears above the empty list and reads zero."
-  - title: "Count reflects total set size under pagination"
-    tags: ["@boundary"]
-    sentence: "When the list is paginated, the count shows the whole note set's size rather than just the rows on screen."
-  - title: "Count updates after creating a note without a full page reload"
-    tags: ["@key-example"]
-    sentence: "Adding a note updates the count above the list immediately, without reloading the page."
-  - title: "Count updates after deleting a note without a full page reload"
-    tags: ["@key-example"]
-    sentence: "Deleting a note updates the count above the list immediately, without reloading the page."
-  - title: "Count updates after a refresh that changes the retrieved set"
-    tags: ["@key-example"]
-    sentence: "A refresh that changes the retrieved notes updates the count above the list without reloading the page."
   - title: "Count is not rendered inline with list items"
     tags: ["@negative"]
     sentence: "The count appears in its own region above the list rather than mixed in with the list entries."
@@ -38,6 +23,3 @@ assumptions:
   - id: ASSUM-004
     text: "The count is a non-interactive text summary placed above the list; it is not a filter control, link, or sortable affordance."
     basis: "Problem statement; the request does not state whether the count is interactive or purely informational"
-  - id: ASSUM-005
-    text: "The zero case is shown as a count of 0 above an empty list rather than suppressing the summary entirely."
-    basis: "Problem statement; the request does not state whether the summary is hidden or shown as zero when the list is empty"

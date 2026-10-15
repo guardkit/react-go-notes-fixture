@@ -35,11 +35,3 @@ assumptions:
   basis: Problem statement; the request does not state whether the count is interactive
     or purely informational
   human_response: deferred
-- id: ASSUM-005
-  scenario: Empty notes list shows a zero count above the list
-  assumption: The zero case is shown as a count of 0 above an empty list rather than
-    suppressing the summary entirely.
-  confidence: low
-  basis: Problem statement; the request does not state whether the summary is hidden
-    or shown as zero when the list is empty
-  human_response: deferred
