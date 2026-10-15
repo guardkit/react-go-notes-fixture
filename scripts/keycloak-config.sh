@@ -39,5 +39,9 @@ export NOTES_REDIRECTS_JSON="[$redirects]"
   for name in NOTES_REALM NOTES_CLIENT_ID NOTES_AUDIENCE NOTES_REDIRECTS_JSON KEYCLOAK_ADMIN_PASSWORD NOTES_TEST_PASSWORD; do
     printf 'export %s=%q\n' "$name" "${!name}"
   done
+  # The readiness helper is function definitions only, and the keycloak image
+  # has no copy of the repository, so it goes down the same stdin stream as
+  # the script body that uses it.
+  cat scripts/keycloak/lib/readiness.sh
   cat scripts/keycloak/configure-realm.inside.sh
 } | docker compose exec -T keycloak bash -s

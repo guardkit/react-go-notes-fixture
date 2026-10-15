@@ -3,17 +3,36 @@
 # kcadm talks to Keycloak directly on localhost; the admin console is not
 # served through the proxy.
 set -euo pipefail
-kc=/opt/keycloak/bin/kcadm.sh
+# The image's own paths; KCADM and KCADM_SERVER let a test stand in a
+# command shim and a stub endpoint for a live Keycloak.
+kc="${KCADM:-/opt/keycloak/bin/kcadm.sh}"
+kc_server="${KCADM_SERVER:-http://localhost:8080/auth}"
 cfg="/tmp/kcadm-$$.config"
-trap 'rm -f "$cfg"' EXIT
+out="/tmp/kcadm-$$.out"
+trap 'rm -f "$cfg" "$out"' EXIT
 # Commands get /dev/null as stdin unless piped: stdin is this script.
 k() { "$kc" "$@" --config "$cfg" </dev/null; }
 kf() { "$kc" "$@" --config "$cfg"; }
 
-k config credentials --server http://localhost:8080/auth --realm master \
-  --user admin --password "$KEYCLOAK_ADMIN_PASSWORD" >/dev/null
+# The bounded readiness wait for the two calls below (scripts/keycloak/
+# lib/readiness.sh). scripts/keycloak-config.sh concatenates it ahead of this
+# script, because the keycloak image has no copy of the repository; run
+# straight from a checkout, it is sourced from disk.
+if ! declare -F kc_wait_ready >/dev/null; then
+  # shellcheck source=lib/readiness.sh
+  source "$(dirname "${BASH_SOURCE[0]}")/lib/readiness.sh"
+fi
 
-if ! k get realms --fields realm --format csv --noquotes | grep -Fxq "$NOTES_REALM"; then
+# Only the login and the first admin call wait for readiness: 503 or a
+# refused connection is retried inside one 2-minute budget, anything else -
+# a wrong password, a 500 - fails straight away. The password reaches the
+# login through the stdin transport of scripts/keycloak-config.sh, never a
+# command line on the host, and never appears in a message.
+login_with_readiness "$out"
+
+kc_wait_ready "first admin call (realm list)" "$kc_server/admin/realms" "$out" -- \
+  k get realms --fields realm --format csv --noquotes
+if ! grep -Fxq "$NOTES_REALM" "$out"; then
   k create realms -s "realm=$NOTES_REALM" -s enabled=true -s sslRequired=external >/dev/null
   echo "keycloak: created realm $NOTES_REALM" >&2
 fi
