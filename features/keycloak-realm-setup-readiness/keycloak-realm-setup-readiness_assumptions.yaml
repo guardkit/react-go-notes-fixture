@@ -37,16 +37,6 @@ assumptions:
     budget'
   human_response: deferred
 - id: ASSUM-004
-  scenario: A non-transient transport failure fails straight away with no retry
-  assumption: Only HTTP 503 and a refused connection are retryable; every other HTTP
-    status and every other transport error is terminal
-  confidence: low
-  basis: 'Open question: ''Is a connection-refused outcome distinguishable from other
-    transport failures (DNS, TLS, timeout) in the tooling the script uses, and should
-    any of those be treated as retryable alongside it?'' — chose to treat only 503
-    and connection-refused as retryable'
-  human_response: deferred
-- id: ASSUM-005
   scenario: The admin password is never placed on a command line
   assumption: The admin password is passed to the login request through a channel
     that never places it on a command line
@@ -55,6 +45,17 @@ assumptions:
     off the command line in this codebase — stdin/heredoc to the login client, a permissions-restricted
     netrc-style file, or an environment variable consumed without echoing?'' — chose
     a non-argv channel'
+  human_response: deferred
+- id: ASSUM-005
+  scenario: A Keycloak that never becomes ready is given up on within the 2-minute
+    budget
+  assumption: Failing the realm setup with a non-zero exit status is sufficient to
+    stop the whole start-up sequence in the checks, local stack and deploy contexts
+  confidence: low
+  basis: 'Open question: ''Where should the 2-minute budget be configured — hardcoded
+    in configure-realm.inside.sh, or exposed as a variable or flag set by scripts/keycloak-config.sh
+    for the checks, the local stack and deploys?'' — chose that a non-zero exit status
+    stops the start-up sequence'
   human_response: deferred
 - id: ASSUM-006
   scenario: Realm setup succeeds after Keycloak answers 503 a few times before it
@@ -79,17 +80,6 @@ assumptions:
 - id: ASSUM-008
   scenario: Realm setup succeeds after Keycloak answers 503 a few times before it
     is ready
-  assumption: The readiness wait is implemented inside the realm setup path so it
-    applies uniformly to the checks, the local stack, and every deploy
-  confidence: low
-  basis: 'Open question: ''Where should the 2-minute budget be configured — hardcoded
-    in configure-realm.inside.sh, or exposed as a variable or flag set by scripts/keycloak-config.sh
-    for the checks, the local stack and deploys?'' — chose to implement the wait inside
-    the realm setup path'
-  human_response: deferred
-- id: ASSUM-009
-  scenario: Realm setup succeeds after Keycloak answers 503 a few times before it
-    is ready
   assumption: The admin password is currently reachable by the login invocation in
     a form that could appear in argv or in output, and the fix removes that exposure
   confidence: low
@@ -97,15 +87,4 @@ assumptions:
     off the command line in this codebase — stdin/heredoc to the login client, a permissions-restricted
     netrc-style file, or an environment variable consumed without echoing?'' — chose
     that the fix removes the exposure rather than merely avoiding printing it'
-  human_response: deferred
-- id: ASSUM-010
-  scenario: A Keycloak that never becomes ready is given up on within the 2-minute
-    budget
-  assumption: Failing the realm setup with a non-zero exit status is sufficient to
-    stop the whole start-up sequence in the checks, local stack and deploy contexts
-  confidence: low
-  basis: 'Open question: ''Where should the 2-minute budget be configured — hardcoded
-    in configure-realm.inside.sh, or exposed as a variable or flag set by scripts/keycloak-config.sh
-    for the checks, the local stack and deploys?'' — chose that a non-zero exit status
-    stops the start-up sequence'
   human_response: deferred
