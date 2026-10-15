@@ -1,0 +1,76 @@
+feature: keycloak-realm-setup-readiness
+generated: "2026-08-14T00:00:00Z"
+scenarios:
+  - title: "Realm setup succeeds after Keycloak answers 503 a few times before it is ready"
+    tags: ["@key-example", "@smoke"]
+    sentence: "When Keycloak briefly answers the admin login with a not-ready error a few times and then works, the realm setup keeps trying and finishes successfully."
+  - title: "Realm setup succeeds after a refused connection before Keycloak is ready"
+    tags: ["@key-example"]
+    sentence: "When Keycloak briefly refuses the connection a few times and then works, the realm setup keeps trying and finishes successfully."
+  - title: "Realm configuration content and ordering are unchanged once the admin endpoint answers"
+    tags: ["@key-example"]
+    sentence: "Once Keycloak's admin endpoint starts answering, the realm is configured with exactly the same content and ordering as before."
+  - title: "The admin password is never placed on a command line"
+    tags: ["@key-example"]
+    sentence: "The admin password is passed to the login in a way that never shows up on any command line."
+  - title: "A 503 response just inside the retryable set is retried"
+    tags: ["@boundary"]
+    sentence: "A not-ready error, which is one of the two conditions allowed to be retried, is retried until Keycloak answers."
+  - title: "A 500 response just outside the retryable set is not retried"
+    tags: ["@boundary", "@negative"]
+    sentence: "A server error that is not one of the two retryable conditions is not retried and fails the setup on the first attempt."
+  - title: "A Keycloak that becomes ready just inside the 2-minute budget is accepted"
+    tags: ["@boundary"]
+    sentence: "A Keycloak that becomes ready just before the two-minute limit is still accepted and the setup completes."
+  - title: "A Keycloak that never becomes ready is given up on within the 2-minute budget"
+    tags: ["@boundary", "@negative"]
+    sentence: "A Keycloak that never becomes ready is given up on within the two-minute limit with a clear not-ready-in-time message and a failed exit."
+  - title: "A wrong admin password fails straight away with no retry"
+    tags: ["@negative"]
+    sentence: "A wrong admin password fails the setup immediately on the first attempt without retrying or using up the readiness budget."
+  - title: "A non-transient transport failure fails straight away with no retry"
+    tags: ["@negative"]
+    sentence: "A transport failure that is not a refused connection fails the setup immediately without retrying."
+  - title: "The admin password is absent from all output of a failed run"
+    tags: ["@negative"]
+    sentence: "The admin password never appears in the output of a failed run."
+  - title: "A Keycloak that never becomes ready by refusing the connection is given up on within the budget"
+    tags: ["@edge-case"]
+    sentence: "A Keycloak that keeps refusing the connection is given up on within the two-minute limit with a clear not-ready-in-time message and a failed exit."
+  - title: "A non-transient failure is distinguishable from the not-ready-in-time timeout"
+    tags: ["@edge-case"]
+    sentence: "A wrong-password failure is reported in a way that is clearly different from the not-ready-in-time timeout."
+  - title: "The readiness wait applies to the checks, the local stack and every deploy"
+    tags: ["@edge-case"]
+    sentence: "The readiness wait applies to every way the realm setup is run, including the checks, the local stack and every deploy."
+assumptions:
+  - id: ASSUM-001
+    text: "The readiness wait covers only the admin login and the first admin call; subsequent realm-configuration calls do not need their own readiness wait"
+    basis: "Open question: 'Should the readiness wait also cover the subsequent realm-configuration calls after the first admin call succeeds, or is readiness satisfied the moment the first admin call returns?' — chose to cover only the login and first admin call"
+  - id: ASSUM-002
+    text: "The retry uses a back-off interval and growth policy within the 2-minute budget"
+    basis: "Open question: 'What back-off interval and growth policy should the retry use inside the 2-minute budget (fixed interval versus exponential), and should the interval appear in retry diagnostics?' — chose a back-off interval within the budget"
+  - id: ASSUM-003
+    text: "The 2-minute budget is a single total wall-clock limit across all attempts, not a per-attempt timeout"
+    basis: "Open question: 'Where should the 2-minute budget be configured — hardcoded in configure-realm.inside.sh, or exposed as a variable or flag set by scripts/keycloak-config.sh for the checks, the local stack and deploys?' — chose a single total wall-clock budget"
+  - id: ASSUM-004
+    text: "Only HTTP 503 and a refused connection are retryable; every other HTTP status and every other transport error is terminal"
+    basis: "Open question: 'Is a connection-refused outcome distinguishable from other transport failures (DNS, TLS, timeout) in the tooling the script uses, and should any of those be treated as retryable alongside it?' — chose to treat only 503 and connection-refused as retryable"
+  - id: ASSUM-005
+    text: "The admin password is passed to the login request through a channel that never places it on a command line"
+    basis: "Open question: 'Which channel is preferred for keeping the admin password off the command line in this codebase — stdin/heredoc to the login client, a permissions-restricted netrc-style file, or an environment variable consumed without echoing?' — chose a non-argv channel"
+  - id: ASSUM-006
+    text: "The behaviour is tested against a stand-in Keycloak (stub endpoint or command shim) rather than a real instance"
+    basis: "Open question: 'How should the tests stand in for Keycloak: a stub HTTP server, a mocked login client, or a command shim placed on PATH?' — chose a stand-in Keycloak"
+  - id: ASSUM-007
+    text: "The HTTP client can distinguish an HTTP 503 response from a connection-refused failure and surface the status without the password appearing in the request line"
+    basis: "Open question: 'Is a connection-refused outcome distinguishable from other transport failures (DNS, TLS, timeout) in the tooling the script uses?' — chose that the client can distinguish 503 from connection-refused"
+  - id: ASSUM-008
+    text: "The readiness wait is implemented inside the realm setup path so it applies uniformly to the checks, the local stack, and every deploy"
+    basis: "Open question: 'Where should the 2-minute budget be configured — hardcoded in configure-realm.inside.sh, or exposed as a variable or flag set by scripts/keycloak-config.sh for the checks, the local stack and deploys?' — chose to implement the wait inside the realm setup path"
+  - id: ASSUM-009
+    text: "The admin password is currently reachable by the login invocation in a form that could appear in argv or in output, and the fix removes that exposure"
+    basis: "Open question: 'Which channel is preferred for keeping the admin password off the command line in this codebase — stdin/heredoc to the login client, a permissions-restricted netrc-style file, or an environment variable consumed without echoing?' — chose that the fix removes the exposure rather than merely avoiding printing it"
+  - id: ASSUM-010
+    text: "Failing the realm setup with a non-zero exit status is sufficient to stop the whole start-up sequence in the checks, local stack and deploy contexts"
+    basis: "Open question: 'Where should the 2-minute budget be configured — hardcoded in configure-realm.inside.sh, or exposed as a variable or flag set by scripts/keycloak-config.sh for the checks, the local stack and deploys?' — chose that a non-zero exit status stops the start-up sequence"
