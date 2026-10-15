@@ -70,6 +70,12 @@ func TestRejectsInvalidJSONBeforePersistence(t *testing.T) {
 		// Over the 1024-byte body guard, so the decode refuses it before the
 		// 200-character title rule is reached.
 		`{"label":"` + strings.Repeat("x", 1025) + `"}`,
+		// The 81-character body that used to sit in this table was refused only
+		// by the 80-character cap ValidateLabel applied before this rule existed.
+		// A 200-character-inclusive limit and an 81-character refusal cannot both
+		// hold, so that one case moved to TestTitleLengthBoundaryAtCreation,
+		// where it is asserted as accepted; nothing else here changed, and every
+		// case above still answers 400 without reaching persistence.
 	}
 	for _, body := range cases {
 		store := &fakeStore{}
@@ -92,25 +98,30 @@ const titleTooLong = "{\"message\":\"label (title) must be 200 characters or few
 // store.Create is ever called.
 func TestTitleLengthBoundaryAtCreation(t *testing.T) {
 	cases := []struct {
-		name  string
-		label string
+		name, label string
+		// stored is the title the handler must hand to store.Create: the request
+		// title with its surrounding spaces trimmed off before it is counted.
+		stored string
 	}{
-		{"short", "hello"},
-		{"one under the limit", strings.Repeat("x", 199)},
-		{"at the limit", strings.Repeat("x", 200)},
-		{"above the superseded 80-character rule", strings.Repeat("x", 81)},
+		{"short", "hello", "hello"},
+		{"one under the limit", strings.Repeat("x", 199), strings.Repeat("x", 199)},
+		{"at the limit", strings.Repeat("x", 200), strings.Repeat("x", 200)},
+		{"above the superseded 80-character rule", strings.Repeat("x", 81), strings.Repeat("x", 81)},
+		// The limit counts the title that is actually stored, so padding may not
+		// hide a title that is at the limit.
+		{"at the limit once padded", "  " + strings.Repeat("x", 200) + "  ", strings.Repeat("x", 200)},
 		// 200 code points are 400 bytes of a two-byte rune and 800 of a
 		// four-byte rune; neither may be refused.
-		{"at the limit in two-byte runes", strings.Repeat("é", 200)},
-		{"at the limit in four-byte runes", strings.Repeat("\U0001F600", 200)},
+		{"at the limit in two-byte runes", strings.Repeat("é", 200), strings.Repeat("é", 200)},
+		{"at the limit in four-byte runes", strings.Repeat("\U0001F600", 200), strings.Repeat("\U0001F600", 200)},
 	}
 	for _, tc := range cases {
-		store := &fakeStore{note: Note{ID: "1", Label: tc.label, CreatedAt: created}}
+		store := &fakeStore{note: Note{ID: "1", Label: tc.stored, CreatedAt: created}}
 		got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodPost, "/api/notes", `{"label":"`+tc.label+`"}`, goodToken)
 		if got.Code != http.StatusCreated {
 			t.Fatalf("%s: got %d %q", tc.name, got.Code, got.Body.String())
 		}
-		if store.calls != 1 || store.label != tc.label {
+		if store.calls != 1 || store.label != tc.stored {
 			t.Fatalf("%s: calls %d label %q", tc.name, store.calls, store.label)
 		}
 	}
@@ -125,6 +136,8 @@ func TestRefusesOverLongTitleBeforePersistence(t *testing.T) {
 		{"well over the limit", strings.Repeat("x", 300)},
 		{"one over in two-byte runes", strings.Repeat("é", 201)},
 		{"one over in four-byte runes", strings.Repeat("\U0001F600", 201)},
+		// Padding is trimmed before the count, so it cannot hide the extra one.
+		{"one over the limit once padded", "  " + strings.Repeat("x", 201) + "  "},
 	}
 	for _, tc := range cases {
 		store := &fakeStore{note: Note{ID: "1", Label: tc.label, CreatedAt: created}}
