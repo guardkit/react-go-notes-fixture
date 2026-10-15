@@ -70,6 +70,10 @@ func TestImplementedResponsesMatchTheContract(t *testing.T) {
 		{"list failure", http.MethodGet, "/api/notes", "", goodToken, &fakeStore{err: errors.New("down")}, 500},
 		{"create", http.MethodPost, "/api/notes", `{"label":"hello"}`, goodToken, &fakeStore{note: note}, 201},
 		{"create invalid", http.MethodPost, "/api/notes", `{"label":""}`, goodToken, &fakeStore{}, 400},
+		// One code point over the enforced title limit (maxLabelChars, so 201
+		// characters today): the refusal must be a contract-conformant Error
+		// body, not merely a 400 status.
+		{"create title too long", http.MethodPost, "/api/notes", `{"label":"` + strings.Repeat("x", maxLabelChars+1) + `"}`, goodToken, &fakeStore{}, 400},
 		{"create anonymous", http.MethodPost, "/api/notes", `{"label":"x"}`, "", &fakeStore{}, 401},
 		{"create failure", http.MethodPost, "/api/notes", `{"label":"x"}`, goodToken, &fakeStore{err: errors.New("down")}, 500},
 	}
