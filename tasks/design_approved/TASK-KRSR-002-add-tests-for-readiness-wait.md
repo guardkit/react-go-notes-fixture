@@ -1,15 +1,16 @@
 ---
-id: TASK-KRSR-002
-title: Add tests for the realm setup readiness wait
-task_type: testing
-parent_review: TASK-REV-6AC9
-feature_id: FEAT-6AC9
-wave: 2
-implementation_mode: task-work
 complexity: 4
 dependencies:
-  - TASK-KRSR-001
+- TASK-KRSR-001
+feature_id: FEAT-6AC9
+id: TASK-KRSR-002
+implementation_mode: task-work
+parent_review: TASK-REV-6AC9
 scaffolding_kind: tests
+status: design_approved
+task_type: testing
+title: Add tests for the realm setup readiness wait
+wave: 2
 ---
 
 Add tests showing that the realm setup succeeds when Keycloak answers 503 a few times before it is ready, fails within the time limit when Keycloak never becomes ready, and fails at once on a wrong password.

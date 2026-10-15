@@ -33,7 +33,7 @@ node --test qa/journey-report.test.mjs
 # failure, never a silent pass.
 shells=()
 for script in scripts/*.sh scripts/keycloak/*.sh scripts/keycloak/lib/*.sh \
-  deploy/*.sh infra/postgres/*.sh; do
+  deploy/*.sh infra/postgres/*.sh tests/keycloak/*.sh; do
   if [[ -f "$script" ]]; then
     shells+=("$script")
   fi
@@ -45,3 +45,7 @@ fi
 for script in "${shells[@]}"; do
   bash -n "$script"
 done
+# The Keycloak realm-setup readiness tests (TASK-KRSR-002). A command shim
+# stands in for kcadm and a stub endpoint for Keycloak, so this needs no
+# container, no network and no live instance.
+bash tests/keycloak/test_configure_realm_readiness.sh
