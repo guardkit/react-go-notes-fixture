@@ -67,7 +67,8 @@ func TestRejectsInvalidJSONBeforePersistence(t *testing.T) {
 		`["ok"]`,
 		`{"label":123}`,
 		"{\"label\":\"\xff\"}",
-		`{"label":"` + strings.Repeat("x", 81) + `"}`,
+		// Over the 1024-byte body guard, so the decode refuses it before the
+		// 200-character title rule is reached.
 		`{"label":"` + strings.Repeat("x", 1025) + `"}`,
 	}
 	for _, body := range cases {
@@ -78,6 +79,61 @@ func TestRejectsInvalidJSONBeforePersistence(t *testing.T) {
 		}
 		if store.calls != 0 {
 			t.Fatalf("body %q reached persistence", body)
+		}
+	}
+}
+
+// titleTooLong is the whole 400 body an over-long title must answer: a plain
+// message naming the title field and the 200-character limit (ASSUM-004).
+const titleTooLong = "{\"message\":\"label (title) must be 200 characters or fewer\"}\n"
+
+// The limit is inclusive and counted in code points, not bytes (ASSUM-002), so
+// a title at the limit is stored and one character over is refused before
+// store.Create is ever called.
+func TestTitleLengthBoundaryAtCreation(t *testing.T) {
+	cases := []struct {
+		name  string
+		label string
+	}{
+		{"short", "hello"},
+		{"one under the limit", strings.Repeat("x", 199)},
+		{"at the limit", strings.Repeat("x", 200)},
+		{"above the superseded 80-character rule", strings.Repeat("x", 81)},
+		// 200 code points are 400 bytes of a two-byte rune and 800 of a
+		// four-byte rune; neither may be refused.
+		{"at the limit in two-byte runes", strings.Repeat("é", 200)},
+		{"at the limit in four-byte runes", strings.Repeat("\U0001F600", 200)},
+	}
+	for _, tc := range cases {
+		store := &fakeStore{note: Note{ID: "1", Label: tc.label, CreatedAt: created}}
+		got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodPost, "/api/notes", `{"label":"`+tc.label+`"}`, goodToken)
+		if got.Code != http.StatusCreated {
+			t.Fatalf("%s: got %d %q", tc.name, got.Code, got.Body.String())
+		}
+		if store.calls != 1 || store.label != tc.label {
+			t.Fatalf("%s: calls %d label %q", tc.name, store.calls, store.label)
+		}
+	}
+}
+
+func TestRefusesOverLongTitleBeforePersistence(t *testing.T) {
+	cases := []struct {
+		name  string
+		label string
+	}{
+		{"one over the limit", strings.Repeat("x", 201)},
+		{"well over the limit", strings.Repeat("x", 300)},
+		{"one over in two-byte runes", strings.Repeat("é", 201)},
+		{"one over in four-byte runes", strings.Repeat("\U0001F600", 201)},
+	}
+	for _, tc := range cases {
+		store := &fakeStore{note: Note{ID: "1", Label: tc.label, CreatedAt: created}}
+		got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodPost, "/api/notes", `{"label":"`+tc.label+`"}`, goodToken)
+		if got.Code != http.StatusBadRequest || got.Body.String() != titleTooLong {
+			t.Fatalf("%s: got %d %q", tc.name, got.Code, got.Body.String())
+		}
+		if store.calls != 0 {
+			t.Fatalf("%s: refused title reached persistence", tc.name)
 		}
 	}
 }
