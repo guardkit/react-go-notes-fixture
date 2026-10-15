@@ -1,0 +1,23 @@
+format_version: '2.0'
+task_id: TASK-NLTC-002
+registered_at:
+  sha: d3b31284c045ea96b21ca4c30c3de74ae4247933
+  date: '2026-10-15'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-list-total-count-AC-001
+  text: Total note count is displayed above the notes list
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-list-total-count-AC-002
+  text: Count is sourced from the same collection that renders the list
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation

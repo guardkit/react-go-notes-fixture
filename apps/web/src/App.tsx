@@ -105,6 +105,7 @@ export function App({ config, manager, initialUser, initialError }: Props) {
               {busy ? "Saving…" : "Save"}
             </button>
           </form>
+          <p data-testid="notes-count">{notes.length} notes</p>
           <ul aria-label="Your notes">
             {notes.map((note) => (
               <li key={note.id}>{note.label}</li>

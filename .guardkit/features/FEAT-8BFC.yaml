@@ -1,0 +1,62 @@
+id: FEAT-8BFC
+name: "Notes List Total Count"
+description: "Show the total number of notes above the notes list in the notes list view."
+created: "2026-07-09T14:32:00Z"
+status: planned
+complexity: 3
+estimated_tasks: 3
+feature_files:
+  - features/notes-list-total-count/notes-list-total-count.feature
+
+tasks:
+  - id: TASK-NLTC-001
+    name: "Display total note count above the notes list"
+    file_path: "tasks/backlog/notes-list-total-count/TASK-NLTC-001-display-total-note-count-above-notes-list.md"
+    complexity: 3
+    dependencies: []
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 30
+
+  - id: TASK-NLTC-002
+    name: "Add unit tests for the total note count display"
+    file_path: "tasks/backlog/notes-list-total-count/TASK-NLTC-002-add-unit-tests-for-total-note-count.md"
+    complexity: 2
+    dependencies:
+      - TASK-NLTC-001
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 20
+
+  - id: TASK-NLTC-003
+    name: "Add end-to-end test for the total note count"
+    file_path: "tasks/backlog/notes-list-total-count/TASK-NLTC-003-add-e2e-test-for-total-note-count.md"
+    complexity: 3
+    dependencies:
+      - TASK-NLTC-001
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 25
+
+orchestration:
+  parallel_groups:
+    - - TASK-NLTC-001
+    - - TASK-NLTC-002
+      - TASK-NLTC-003
+  estimated_duration_minutes: 75
+  recommended_parallel: 2
+
+scenario_owners:
+  "Total note count is displayed above the notes list": TASK-NLTC-001
+  "Count is sourced from the same collection that renders the list": TASK-NLTC-001
+  "Count is not rendered inline with list items": TASK-NLTC-001
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Total note count is displayed above the notes list":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Count is sourced from the same collection that renders the list":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Count is not rendered inline with list items":
+    verifier: "exam"
