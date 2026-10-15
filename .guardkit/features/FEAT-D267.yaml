@@ -1,0 +1,59 @@
+id: FEAT-D267
+name: "Notes API Title Length Validation"
+description: "Refuse note-creation requests whose title is longer than 200 characters with 400 Bad Request and a clear message; Go API and Go tests only."
+created: "2026-10-29T14:00:00Z"
+status: planned
+complexity: 3
+estimated_tasks: 2
+feature_files:
+  - features/notes-api-title-length-validation/notes-api-title-length-validation.feature
+scenario_owners:
+  "A note with a title longer than 200 characters is refused": TASK-NTVL-001
+  "A note with a title of exactly 200 characters is accepted": TASK-NTVL-001
+  "A note with a short title is accepted": TASK-NTVL-001
+  "A title at the exact 200-character limit is accepted": TASK-NTVL-001
+  "A title one character over the 200-character limit is refused": TASK-NTVL-001
+  "A refused note-creation request persists nothing": TASK-NTVL-001
+tasks:
+  - id: TASK-NTVL-001
+    name: "Enforce the 200-character note title limit at note creation"
+    file_path: "tasks/backlog/notes-api-title-length-validation/TASK-NTVL-001-enforce-note-title-limit.md"
+    complexity: 3
+    dependencies: []
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 45
+  - id: TASK-NTVL-002
+    name: "Extend the contract test table for the refused over-long title"
+    file_path: "tasks/backlog/notes-api-title-length-validation/TASK-NTVL-002-extend-contract-test-table.md"
+    complexity: 2
+    dependencies:
+      - TASK-NTVL-001
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 15
+orchestration:
+  parallel_groups:
+    - - TASK-NTVL-001
+    - - TASK-NTVL-002
+  estimated_duration_minutes: 60
+  recommended_parallel: 1
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note with a title longer than 200 characters is refused":
+    verifier: "probe:bus"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note with a title of exactly 200 characters is accepted":
+    verifier: "probe:bus"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note with a short title is accepted":
+    verifier: "probe:bus"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A title at the exact 200-character limit is accepted":
+    verifier: "probe:bus"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A title one character over the 200-character limit is refused":
+    verifier: "probe:bus"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A refused note-creation request persists nothing":
+    verifier: "probe:bus"
