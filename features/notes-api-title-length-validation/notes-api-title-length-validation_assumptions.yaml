@@ -1,0 +1,39 @@
+feature: Notes API Title Length Validation
+generated: '2026-08-14T00:00:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: A note with a title longer than 200 characters is refused
+  assumption: The notes API exposes an HTTP note-creation endpoint implemented in
+    Go where request validation can be enforced
+  confidence: low
+  basis: The request says 'answering 400 Bad Request' (HTTP framing) but names no
+    method or path; the alternative is a non-HTTP creation path (e.g. gRPC or a library
+    call) where the 400 framing would not apply.
+  human_response: deferred
+- id: ASSUM-002
+  scenario: A title at the exact 200-character limit is accepted
+  assumption: The 200-character limit is counted in characters (Unicode code points),
+    not bytes
+  confidence: low
+  basis: The request says '200 characters' but does not say how they are counted;
+    the alternative is counting bytes, which would wrongly reject some 200-character
+    non-ASCII titles.
+  human_response: deferred
+- id: ASSUM-003
+  scenario: A note with a title longer than 200 characters is refused
+  assumption: The rule applies only to note creation, not to updates of existing notes
+  confidence: low
+  basis: The request mentions creation only; the alternative is that the same limit
+    must also be enforced on note updates/renames that could push a title over 200
+    characters.
+  human_response: deferred
+- id: ASSUM-004
+  scenario: A note with a title longer than 200 characters is refused
+  assumption: The 'clear message' is a plain response body naming the title field
+    and the 200-character limit, with no prescribed structured JSON error envelope
+  confidence: low
+  basis: The request requires 'a clear message' but does not specify its shape; the
+    alternative is a structured JSON error conforming to an existing API error envelope.
+  human_response: deferred
