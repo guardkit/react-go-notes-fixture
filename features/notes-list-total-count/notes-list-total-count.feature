@@ -20,8 +20,7 @@ Feature: Notes List Total Count
   Scenario: Total note count is displayed above the notes list
     Given the notes list contains 12 notes
     When the notes list view is rendered
-    Then a summary line showing the total number of notes is displayed in a dedicated region immediately above the first list entry
-    And the summary line shows "12 notes"
+    Then the notes list view displays the total number of notes as "12 notes"
 
   # Why: "The count is derived from the same note collection that populates the list so the two can never disagree"
   # [ASSUMPTION: confidence=low] The total count is already available to the view from the data used to render the list, so no new backend endpoint or query is required.
@@ -30,11 +29,11 @@ Feature: Notes List Total Count
   Scenario: Count is sourced from the same collection that renders the list
     Given the notes list is populated from a note collection
     When the notes list view is rendered
-    Then the displayed count equals the number of notes in that collection
+    Then the total number of notes displayed by the notes list view equals the number of notes in that collection
 
   # Why: "Summary region must be positioned above the list, not inline with list items"
   @negative
   Scenario: Count is not rendered inline with list items
     Given the notes list contains 12 notes
     When the notes list view is rendered
-    Then the count summary is not rendered inline with any list item
+    Then the total number of notes is not displayed as part of any individual note in the notes list

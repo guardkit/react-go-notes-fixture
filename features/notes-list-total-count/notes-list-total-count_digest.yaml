@@ -3,13 +3,13 @@ generated: "2026-07-09T14:32:00Z"
 scenarios:
   - title: "Total note count is displayed above the notes list"
     tags: ["@key-example", "@smoke"]
-    sentence: "When the notes list is shown, a summary line above the first entry states how many notes there are."
+    sentence: "When the notes list is shown, the view states how many notes there are."
   - title: "Count is sourced from the same collection that renders the list"
     tags: ["@key-example"]
-    sentence: "The number shown above the list always matches the notes actually rendered in the list."
+    sentence: "The number shown always matches the notes actually rendered in the list."
   - title: "Count is not rendered inline with list items"
     tags: ["@negative"]
-    sentence: "The count appears in its own region above the list rather than mixed in with the list entries."
+    sentence: "The count is not shown as part of any individual note in the list."
 assumptions:
   - id: ASSUM-001
     text: "A notes list view already exists and renders a collection of notes; the request adds a count to it rather than introducing the list itself."

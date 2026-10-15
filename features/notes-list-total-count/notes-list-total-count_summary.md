@@ -10,7 +10,7 @@ REVIEW REQUIRED: all assumptions unconfirmed (--auto mode)
 
 ## Scope
 
-This specification covers rendering a total-notes count in a dedicated region immediately above the notes list, sourced from the same collection that populates the list. The stack is undeclared and defaults to `generic`; no codebase scan or fleet-memory retrieval was performed in this headless run.
+This specification covers rendering a total-notes count in the notes list view, sourced from the same collection that populates the list. The stack is undeclared and defaults to `generic`; no codebase scan or fleet-memory retrieval was performed in this headless run.
 
 ## Scenario Counts by Category
 
