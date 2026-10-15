@@ -1,0 +1,28 @@
+format_version: '2.0'
+task_id: TASK-NTVL-002
+registered_at:
+  sha: bb4a6bc5cd6b154016f494c78215fa55b983c8d1
+  date: '2026-10-15'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-api-title-length-validation-AC-001
+  text: A note with a title longer than 200 characters is refused
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-api-title-length-validation-AC-002
+  text: A note with a title of exactly 200 characters is accepted
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-api-title-length-validation-AC-003
+  text: A note with a short title is accepted
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation
