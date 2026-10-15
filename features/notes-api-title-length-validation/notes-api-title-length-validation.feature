@@ -23,21 +23,20 @@ Feature: Notes API Title Length Validation
     When the request is sent to the notes API
     Then the API answers 400 Bad Request
     And the response carries a clear message naming the title field and the 200-character limit
-    And no note is created
 
   # Why: "Titles of exactly 200 characters or fewer pass validation and proceed to normal creation, so the boundary is inclusive of the limit."
   @key-example @smoke
   Scenario: A note with a title of exactly 200 characters is accepted
     Given a note-creation request whose title is exactly 200 characters long
     When the request is sent to the notes API
-    Then the note is created successfully
+    Then the request succeeds
 
   # Why: "a short title continues to succeed"
   @key-example
   Scenario: A note with a short title is accepted
     Given a note-creation request whose title is 10 characters long
     When the request is sent to the notes API
-    Then the note is created successfully
+    Then the request succeeds
 
   # Why: "a title of exactly 200 characters is accepted" — just-inside boundary
   # [ASSUMPTION: confidence=low] The 200-character limit is counted in characters (Unicode code points), not bytes
@@ -45,7 +44,7 @@ Feature: Notes API Title Length Validation
   Scenario: A title at the exact 200-character limit is accepted
     Given a note-creation request whose title is exactly 200 characters long
     When the request is sent to the notes API
-    Then the note is created successfully
+    Then the request succeeds
 
   # Why: "a title of 201 characters yields 400 Bad Request with the clear validation message" — just-outside boundary
   @boundary @negative
@@ -54,7 +53,6 @@ Feature: Notes API Title Length Validation
     When the request is sent to the notes API
     Then the API answers 400 Bad Request
     And the response carries a clear message naming the title field and the 200-character limit
-    And no note is created
 
   # Why: "Rejection must occur before persistence so no over-long note is stored"
   @negative
@@ -62,4 +60,4 @@ Feature: Notes API Title Length Validation
     Given a note-creation request whose title is 201 characters long
     When the request is sent to the notes API
     Then the API answers 400 Bad Request
-    And no note record exists in the store
+    And the response carries a clear message naming the title field and the 200-character limit

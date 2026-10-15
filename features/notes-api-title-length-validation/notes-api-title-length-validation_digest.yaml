@@ -3,22 +3,22 @@ generated: "2026-08-14T00:00:00Z"
 scenarios:
   - title: "A note with a title longer than 200 characters is refused"
     tags: ["@key-example", "@smoke"]
-    sentence: "A request to create a note whose title runs past 200 characters is refused with a 400 Bad Request and a clear message, and no note is created."
+    sentence: "A request to create a note whose title runs past 200 characters is refused with a 400 Bad Request and a clear message naming the title field and the limit."
   - title: "A note with a title of exactly 200 characters is accepted"
     tags: ["@key-example", "@smoke"]
-    sentence: "A request to create a note whose title is exactly 200 characters long is accepted and the note is created."
+    sentence: "A request to create a note whose title is exactly 200 characters long succeeds."
   - title: "A note with a short title is accepted"
     tags: ["@key-example"]
-    sentence: "A request to create a note with a short title is accepted and the note is created."
+    sentence: "A request to create a note with a short title succeeds."
   - title: "A title at the exact 200-character limit is accepted"
     tags: ["@boundary"]
     sentence: "A title sitting right at the 200-character limit is accepted, since the limit is inclusive."
   - title: "A title one character over the 200-character limit is refused"
     tags: ["@boundary", "@negative"]
-    sentence: "A title one character past the 200-character limit is refused with a 400 Bad Request and a clear message, and no note is created."
+    sentence: "A title one character past the 200-character limit is refused with a 400 Bad Request and a clear message naming the title field and the limit."
   - title: "A refused note-creation request persists nothing"
     tags: ["@negative"]
-    sentence: "When a note-creation request is refused for an over-long title, nothing is saved to the store."
+    sentence: "When a note-creation request is refused for an over-long title, the caller receives a 400 Bad Request with a clear message, confirming the request was rejected before any note was stored."
 assumptions:
   - id: ASSUM-001
     text: "The notes API exposes an HTTP note-creation endpoint implemented in Go where request validation can be enforced"

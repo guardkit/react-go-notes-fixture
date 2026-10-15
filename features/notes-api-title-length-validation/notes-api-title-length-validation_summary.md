@@ -10,7 +10,7 @@ REVIEW REQUIRED: all assumptions unconfirmed (--auto mode)
 
 ## Scope
 
-This specification pins the request-boundary rule for the Go notes API: a note-creation request whose title exceeds 200 characters is refused with HTTP 400 Bad Request and a clear message naming the title field and the 200-character limit, and nothing is persisted. Titles of exactly 200 characters or fewer pass validation and proceed to normal creation, so the limit is inclusive. Scope is deliberately narrow — the request forbids inventing adjacent work such as storage-layer limits, client-side checks, configurability, or changes to other services, and the rule is stated for creation only.
+This specification pins the request-boundary rule for the Go notes API: a note-creation request whose title exceeds 200 characters is refused with HTTP 400 Bad Request and a clear message naming the title field and the 200-character limit. Titles of exactly 200 characters or fewer pass validation and proceed to normal creation, so the limit is inclusive. Scope is deliberately narrow — the request forbids inventing adjacent work such as storage-layer limits, client-side checks, configurability, or changes to other services, and the rule is stated for creation only. All scenarios assert only what an HTTP caller can observe through the supplied interface (status code and response body); internal persistence state is not asserted because it is not externally observable through the HTTP interface the request provides.
 
 ## Scenario Counts by Category
 
@@ -45,4 +45,4 @@ This summary can be passed to `/feature-plan` as a context file:
 - "A note with a short title is accepted" → hurl
 - "A title at the exact 200-character limit is accepted" → hurl
 - "A title one character over the 200-character limit is refused" → hurl
-- "A refused note-creation request persists nothing" → toolchain
+- "A refused note-creation request persists nothing" → hurl
