@@ -1,0 +1,45 @@
+feature: Notes List Total Count
+generated: '2026-07-09T14:32:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: Total note count is displayed above the notes list
+  assumption: A notes list view already exists and renders a collection of notes;
+    the request adds a count to it rather than introducing the list itself.
+  confidence: low
+  basis: Problem statement; the request assumes an existing list view rather than
+    specifying one to be built
+  human_response: deferred
+- id: ASSUM-002
+  scenario: Count is sourced from the same collection that renders the list
+  assumption: '"Total number of notes" means the size of the note set the list is
+    currently showing, not a per-user global count independent of the view.'
+  confidence: low
+  basis: Problem statement; the request does not state whether the count is view-scoped
+    or a global per-user total
+  human_response: deferred
+- id: ASSUM-003
+  scenario: Count is sourced from the same collection that renders the list
+  assumption: The total count is already available to the view from the data used
+    to render the list, so no new backend endpoint or query is required.
+  confidence: low
+  basis: Problem statement; the request does not state whether the count is already
+    obtainable from the list's data source
+  human_response: deferred
+- id: ASSUM-004
+  scenario: Total note count is displayed above the notes list
+  assumption: The count is a non-interactive text summary placed above the list; it
+    is not a filter control, link, or sortable affordance.
+  confidence: low
+  basis: Problem statement; the request does not state whether the count is interactive
+    or purely informational
+  human_response: deferred
+- id: ASSUM-005
+  scenario: Empty notes list shows a zero count above the list
+  assumption: The zero case is shown as a count of 0 above an empty list rather than
+    suppressing the summary entirely.
+  confidence: low
+  basis: Problem statement; the request does not state whether the summary is hidden
+    or shown as zero when the list is empty
+  human_response: deferred
