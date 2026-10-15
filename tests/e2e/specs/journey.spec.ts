@@ -117,14 +117,14 @@ test("sign in, create a note, reload, sign out, anonymous API refused", async ({
   // Tokens live in memory, so a reload signs in again through Keycloak's
   // session; the note must come back from PostgreSQL.
   await page.reload();
-  const relisted = ownerCollection(page);
+  const listedAfterReload = ownerCollection(page);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByTestId("signed-in-user")).toHaveText(user.username);
   await expect(list.getByText(label)).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
   // The reloaded view's total is the reloaded collection's size, so the count
   // and the list come back from the same source together.
-  const persisted = await relisted;
+  const persisted = await listedAfterReload;
   expect(persisted).toBe(seeded + 1);
   await expectTotalAboveList(summary, list, persisted);
   await page.screenshot({ path: testInfo.outputPath("after-reload.png") });
