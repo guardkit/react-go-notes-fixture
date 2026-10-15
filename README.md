@@ -40,10 +40,23 @@ provider:
 | `scripts/check-feature.sh` | The connected check (see below). Smoke gates use `bash scripts/check.sh`. Browser journeys are the declared `feature_check` (`bash scripts/check-feature.sh`, timeout 1800 s), which GuardKit runs itself after the last wave with its own long limit; do not put them in `smoke_gates`. If a plan must, it sets `timeout: 600`. (Also in `.claude/rules`.) |
 | `scripts/coverage.sh` | The declared coverage (root): both suites, totals printed. Measured, never thresholded: exit 0 means the tests passed with coverage measured. The `web` component declares `npm run coverage` (Vitest with V8 coverage) and the `api` component the Go `-coverprofile` and `go tool cover -func` total. Reports stay in git-ignored `coverage/` folders. |
 | `scripts/stack-lib.sh`, `scripts/stack.sh` | The disposable stack's lifecycle pieces, shared by `check-feature.sh` and by a direct Playwright run (below). |
-| `scripts/migrate.sh`, `seed.sh`, `keycloak-config.sh`, `build-artifacts.sh` | The explicit steps they use. |
+| `scripts/migrate.sh`, `seed.sh`, `keycloak-config.sh`, `build-artifacts.sh` | The explicit steps they use. `keycloak-config.sh` runs the realm setup inside the Keycloak container, and that setup waits for the admin login to be ready: it retries only on HTTP 503 or a refused connection, under one 2-minute budget in total, and fails straight away on any other error. The admin password is passed to the realm setup on the exec's stdin and never appears on a command line or in output. See "Realm setup readiness" below. |
 | `tests/e2e` | Playwright 1.63.0. Chromium runs the full journey: sign in on the real Keycloak page, create a note, reload and see it, sign out, and get 401 from the API anonymously or with a forged token. Firefox and WebKit run a sign-in smoke. HTML and JSON reports, video always for the journey, traces kept on failure. |
 | `deploy/` | `profile.yaml` in Forge's format, with `identity`, the shared `sandbox` and the `preview` section (`enabled`, `slots`, `app_ttl_hours`, `evidence_days`, `slot_wait_minutes`, as Forge's parser reads them). `settings.sh` lists every signal Forge sends in each leg and maps it to one mode, project, port and settings file. `deploy.sh` handles each mode; see "Deploy modes" below. Then the health check. |
 | `qa/live-gate-driver.mjs` | Runs the same journey against a running instance and prints Forge's results envelope. Its verdict comes from `qa/journey-report.mjs` (tested by `node --test` in `check.sh`). If the key journey's video, every screenshot, or the HTML report is missing or empty on disk, a passing run is reported as `instrument_fail`, never `pass`; a failing run stays `fail`. In a preview it addresses `http://127.0.0.1:<FACTORY_PREVIEW_INTERNAL_PORT>`. The envelope carries `app_url`, `report_ref`, `screenshot_refs`, `media_refs` (video), `trace_refs` and `outcome` (passed, failed, skipped, flaky; null when unknown), with references relative to the evidence folder. |
+
+**Realm setup readiness.** `scripts/keycloak-config.sh` pipes the realm setup into the
+Keycloak container (`docker compose exec -T keycloak bash -s`). The settings and both
+passwords are written as `export` lines at the head of that same stdin stream, so the
+admin password is never placed on a host command line, and every message the readiness
+wait prints is redacted, so it never appears in the output either. The wait covers the
+admin login and the first admin call only (`scripts/keycloak/lib/readiness.sh`): it
+retries on HTTP 503 or a refused connection every `READINESS_RETRY_INTERVAL_SECONDS`
+(2 s) inside one `READINESS_BUDGET_SECONDS` budget (120 s — one total limit shared by
+both calls, never a per-attempt timeout), and fails on the first attempt on anything
+else, naming the status it received. A budget that runs out exits non-zero with
+"Keycloak was not ready in time", so start-up stops there rather than continuing with a
+half-configured realm. The realm-configuration calls that follow are unchanged.
 
 **Token checks.** The API accepts a token only when all of these hold:
 - the RS256 signature verifies against keys from `OIDC_JWKS_URL`;
