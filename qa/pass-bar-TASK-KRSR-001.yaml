@@ -1,0 +1,28 @@
+format_version: '2.0'
+task_id: TASK-KRSR-001
+registered_at:
+  sha: eb77c3cfec4a832320bf4fbbce6fc6caeff13215
+  date: '2026-10-15'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: keycloak-realm-setup-readiness-AC-001
+  text: Realm setup succeeds after Keycloak answers 503 a few times before it is ready
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: keycloak-realm-setup-readiness-AC-002
+  text: Realm setup succeeds after a refused connection before Keycloak is ready
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: keycloak-realm-setup-readiness-AC-003
+  text: The admin password is never placed on a command line
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation
