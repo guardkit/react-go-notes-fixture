@@ -1,0 +1,43 @@
+format_version: '2.0'
+task_id: TASK-96BB-001
+registered_at:
+  sha: 173c3442634c4312780fdbc60343d8a2eec327c9
+  date: '2026-10-16'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-count-in-browser-tab-title-AC-001
+  text: Tab title shows the note count on initial load
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-count-in-browser-tab-title-AC-002
+  text: Tab title shows zero notes on initial load
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-count-in-browser-tab-title-AC-003
+  text: Adding a note updates the tab title immediately
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-count-in-browser-tab-title-AC-004
+  text: Deleting the last note updates the tab title to zero
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-count-in-browser-tab-title-AC-005
+  text: Tab title never diverges from the visible note list
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-count-in-browser-tab-title-AC-006
+  text: Showing the count changes nothing outside the web app
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation

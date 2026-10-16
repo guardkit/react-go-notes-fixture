@@ -1,0 +1,43 @@
+feature: notes-count-in-browser-tab-title
+generated: "2026-07-09T14:32:00Z"
+scenarios:
+  - title: "Tab title shows the note count on initial load"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Opening the app with three notes shows 'Notes (3)' in the browser tab."
+  - title: "Tab title shows zero notes on initial load"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Opening the app with no notes shows 'Notes (0)' in the browser tab."
+  - title: "Adding a note updates the tab title immediately"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Adding a note updates the tab title to the new count right away, without reloading the page."
+  - title: "Deleting the last note updates the tab title to zero"
+    tags: ["@key-example"]
+    sentence: "Deleting the final note changes the tab title to 'Notes (0)'."
+  - title: "Tab title never diverges from the visible note list"
+    tags: ["@key-example"]
+    sentence: "The tab title always matches the number of notes the user can see in the list."
+  - title: "Showing the count changes nothing outside the web app"
+    tags: ["@key-example"]
+    sentence: "Displaying the count needs no backend, API, or storage change."
+  - title: "Tab title renders the exact format for any note count"
+    tags: ["@boundary"]
+    sentence: "For any number of notes, the tab title reads exactly 'Notes (N)'."
+  - title: "Deleting the last note leaves no stale count in the tab title"
+    tags: ["@boundary"]
+    sentence: "After the last note is deleted, the tab title no longer shows the old count."
+  - title: "Tab title contains only the required count format"
+    tags: ["@negative"]
+    sentence: "The tab title shows only the count format and no other text."
+  - title: "Rapid add and delete settle on the correct count"
+    tags: ["@edge-case"]
+    sentence: "Adding and then deleting a note in quick succession leaves the tab title on the correct count."
+assumptions:
+  - id: ASSUM-001
+    text: "The web app already has the full note count in client-side state; no backend endpoint or API change is needed to compute it"
+    basis: "The request scopes the change to the web app and its tests; the alternative is that the app only knows a page of notes and a truthful total would require a backend change."
+  - id: ASSUM-002
+    text: "The app is a browser-based web app where document.title can be set dynamically from application code"
+    basis: "The request says 'browser tab title' and 'web app'; the alternative is an embedded webview that ignores document.title and needs another surfacing mechanism."
+  - id: ASSUM-003
+    text: "The title format is exactly 'Notes (N)' with the literal prefix 'Notes', including 'Notes (0)' for the empty state"
+    basis: "The request gives the example 'Notes (3)'; the alternative is preserving an existing app-specific title format with the count appended, or a different empty-state convention."

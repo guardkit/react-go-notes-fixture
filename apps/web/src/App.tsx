@@ -36,6 +36,14 @@ export function App({ config, manager, initialUser, initialError }: Props) {
     };
   }, [token]);
 
+  // The tab title carries the size of the very collection the list below
+  // renders, so it is re-derived in the same commit as the list: an add or a
+  // removal moves the title and the rows together, and the title can never be
+  // left counting notes the person can no longer see.
+  useEffect(() => {
+    document.title = `Notes (${notes.length})`;
+  }, [notes]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");

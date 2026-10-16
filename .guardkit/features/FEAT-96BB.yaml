@@ -1,0 +1,69 @@
+id: FEAT-96BB
+name: "Notes Count in Browser Tab Title"
+description: "Show the number of notes in the browser tab title in the exact format \"Notes (N)\", derived from note data the web app already holds. Web app and its tests only; no backend, API, or storage change."
+created: "2026-07-09T14:32:00Z"
+status: planned
+complexity: 4
+estimated_tasks: 1
+
+feature_files:
+  - features/notes-count-in-browser-tab-title/notes-count-in-browser-tab-title.feature
+
+tasks:
+  - id: TASK-96BB-001
+    name: "Show the note count in the browser tab title"
+    file_path: "tasks/backlog/notes-count-in-browser-tab-title/TASK-96BB-001-show-note-count-in-tab-title.md"
+    complexity: 4
+    dependencies: []
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 90
+
+orchestration:
+  parallel_groups:
+    - - TASK-96BB-001
+  estimated_duration_minutes: 90
+  recommended_parallel: 1
+
+scenario_owners:
+  "Tab title shows the note count on initial load": TASK-96BB-001
+  "Tab title shows zero notes on initial load": TASK-96BB-001
+  "Adding a note updates the tab title immediately": TASK-96BB-001
+  "Deleting the last note updates the tab title to zero": TASK-96BB-001
+  "Tab title never diverges from the visible note list": TASK-96BB-001
+  "Showing the count changes nothing outside the web app": TASK-96BB-001
+  "Tab title renders the exact format for any note count": TASK-96BB-001
+  "Deleting the last note leaves no stale count in the tab title": TASK-96BB-001
+  "Tab title contains only the required count format": TASK-96BB-001
+  "Rapid add and delete settle on the correct count": TASK-96BB-001
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Tab title shows the note count on initial load":
+    verifier: "playwright"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Tab title shows zero notes on initial load":
+    verifier: "playwright"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Adding a note updates the tab title immediately":
+    verifier: "playwright"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Deleting the last note updates the tab title to zero":
+    verifier: "playwright"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Tab title never diverges from the visible note list":
+    verifier: "playwright"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Showing the count changes nothing outside the web app":
+    verifier: "playwright"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Tab title renders the exact format for any note count":
+    verifier: "playwright"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Deleting the last note leaves no stale count in the tab title":
+    verifier: "playwright"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Tab title contains only the required count format":
+    verifier: "playwright"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Rapid add and delete settle on the correct count":
+    verifier: "playwright"
