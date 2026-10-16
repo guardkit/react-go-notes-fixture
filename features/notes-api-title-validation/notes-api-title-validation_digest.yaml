@@ -1,0 +1,58 @@
+feature: notes-api-title-validation
+generated: "2026-07-09T14:32:00Z"
+scenarios:
+  - title: "A note with a non-blank title is created successfully"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Submitting a note-creation request with a real, non-blank title creates the note and stores it."
+  - title: "A note with a non-blank title is answered exactly as before"
+    tags: ["@key-example"]
+    sentence: "A note with a real title is created and answered just as it was before the blank-title rule was added."
+  - title: "A note-creation request with a blank title is rejected with a clear message"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A note-creation request whose title is missing, empty, or only spaces is refused with a clear message and nothing is stored."
+  - title: "A title of a single non-whitespace character is accepted"
+    tags: ["@boundary"]
+    sentence: "A title that is just one real character counts as non-blank and the note is created."
+  - title: "A title of a single whitespace character is rejected as blank"
+    tags: ["@boundary"]
+    sentence: "A title that is just one space counts as blank and the note is refused."
+  - title: "A title with surrounding whitespace around a non-blank value is accepted"
+    tags: ["@boundary"]
+    sentence: "Extra spaces around a real title are trimmed away and the note is still created."
+  - title: "A note-creation request with an absent title is rejected"
+    tags: ["@negative"]
+    sentence: "A note-creation request that leaves the title out altogether is refused with a clear message."
+  - title: "A note-creation request with an empty-string title is rejected"
+    tags: ["@negative"]
+    sentence: "A note-creation request whose title is an empty string is refused with a clear message."
+  - title: "A note-creation request with a whitespace-only title is rejected"
+    tags: ["@negative"]
+    sentence: "A note-creation request whose title is only spaces is refused with a clear message."
+  - title: "A title of only tab and newline characters is rejected as blank"
+    tags: ["@edge-case"]
+    sentence: "A title made only of tabs and newlines is treated as blank and the note is refused."
+  - title: "A title of only non-breaking space characters is rejected as blank"
+    tags: ["@edge-case"]
+    sentence: "A title made only of non-breaking spaces is treated as blank and the note is refused."
+  - title: "A note with a very long non-blank title is created successfully"
+    tags: ["@edge-case"]
+    sentence: "A note with a very long but real title is still created and stored."
+assumptions:
+  - id: ASSUM-001
+    text: "The note-creation operation is an HTTP endpoint accepting a title, and it currently accepts empty or blank titles without complaint"
+    basis: "The request names an HTTP 400 Bad Request response but never states the method or path; the alternative is that the operation is not an HTTP endpoint or already rejects blank titles, making this a no-op or a fix in a different code path"
+  - id: ASSUM-002
+    text: "Blank means the title is absent, the empty string, or whitespace-only once surrounding whitespace is trimmed"
+    basis: "The request says 'empty or blank' and the input adds 'after trimming'; the alternative is that whitespace-only titles are accepted, or that leading/trailing whitespace is grounds for rejection even when the trimmed value is non-empty"
+  - id: ASSUM-003
+    text: "The 400 response carries a clear message naming the title as the invalid field"
+    basis: "The request requires 'a clear message' but not its wording or shape; the alternative is a plain-text string versus a structured JSON error body with a field name, and the exact wording is unspecified"
+  - id: ASSUM-004
+    text: "The rule is enforced in the Go API request-handling path rather than in a database constraint or a client-side check"
+    basis: "The request says 'Change only the Go API and its Go tests'; the alternative is enforcement in a database constraint or client-side check, which cannot answer 400 Bad Request with a message"
+  - id: ASSUM-005
+    text: "The rule applies only to note creation; update/edit operations and other fields are out of scope"
+    basis: "The request names note creation only; the alternative is that the blank-title rule must also guard note updates/edits, which would leave blank notes able to enter the store through the edit path"
+  - id: ASSUM-006
+    text: "Existing successful note-creation behaviour and status codes are unchanged for non-blank titles; the new rule only adds a rejection path"
+    basis: "The request says a non-blank title 'continues to be created and answered exactly as before'; the alternative is that the success contract changes, which would break existing clients and existing Go tests"
