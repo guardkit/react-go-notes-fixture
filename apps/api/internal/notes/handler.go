@@ -60,9 +60,9 @@ func Routes(store Store, authn Authenticator, runID string) http.Handler {
 	mux.Handle("POST /api/notes", signedIn(authn, func(w http.ResponseWriter, r *http.Request, owner string) {
 		label, err := decodeLabel(w, r)
 		if err != nil {
-			// An over-long title answers with the validation message naming the
-			// field and the limit; every other failure stays "Invalid request".
-			if errors.Is(err, errLabelTooLong) {
+			// A blank or over-long title answers with the validation message
+			// naming the field; every other failure stays "Invalid request".
+			if errors.Is(err, errLabelBlank) || errors.Is(err, errLabelTooLong) {
 				writeError(w, http.StatusBadRequest, err.Error())
 				return
 			}
