@@ -2,8 +2,8 @@
 
 **Stack**: generic (no stack declared in the request; not auto-detected in headless mode)
 **Generated**: 2026-07-09T14:32:00Z
-**Scenarios**: 11 total (3 smoke, 0 regression)
-**Assumptions**: 4 total (0 high / 0 medium / 4 low confidence)
+**Scenarios**: 10 total (3 smoke, 0 regression)
+**Assumptions**: 3 total (0 high / 0 medium / 3 low confidence)
 **Review required**: Yes
 
 REVIEW REQUIRED: all assumptions unconfirmed (--auto mode)
@@ -19,7 +19,7 @@ This specification covers the web-app-only change of showing the current note co
 | Key examples (@key-example) | 6 |
 | Boundary conditions (@boundary) | 2 |
 | Negative cases (@negative) | 1 |
-| Edge cases (@edge-case) | 2 |
+| Edge cases (@edge-case) | 1 |
 
 ## Deferred Items
 
@@ -27,10 +27,9 @@ None. All scenarios are included; there is no interactive curation in this headl
 
 ## Open Assumptions (low confidence)
 
-- ASSUM-001 — The count shown is the total number of notes, not a filtered or view-scoped subset.
-- ASSUM-002 — The web app already has the full note count in client-side state; no backend/API change is needed.
-- ASSUM-003 — The app is a browser-based web app where document.title can be set dynamically.
-- ASSUM-004 — The title format is exactly "Notes (N)" with the literal prefix "Notes", including "Notes (0)".
+- ASSUM-001 — The web app already has the full note count in client-side state; no backend/API change is needed.
+- ASSUM-002 — The app is a browser-based web app where document.title can be set dynamically.
+- ASSUM-003 — The title format is exactly "Notes (N)" with the literal prefix "Notes", including "Notes (0)".
 
 ## Verifier routing (proposed)
 
@@ -44,7 +43,6 @@ None. All scenarios are included; there is no interactive curation in this headl
 - "Deleting the last note leaves no stale count in the tab title" → toolchain
 - "Tab title contains only the required count format" → toolchain
 - "Rapid add and delete settle on the correct count" → toolchain
-- "Tab title shows the total count while a filter is active" → toolchain
 
 ## Integration with /feature-plan
 

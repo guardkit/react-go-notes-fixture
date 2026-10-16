@@ -31,19 +31,13 @@ scenarios:
   - title: "Rapid add and delete settle on the correct count"
     tags: ["@edge-case"]
     sentence: "Adding and then deleting a note in quick succession leaves the tab title on the correct count."
-  - title: "Tab title shows the total count while a filter is active"
-    tags: ["@edge-case"]
-    sentence: "Even when a filter narrows the visible notes, the tab title shows the total number of notes."
 assumptions:
   - id: ASSUM-001
-    text: "The count shown is the total number of notes available to the web app, not a filtered or view-scoped subset"
-    basis: "The request says 'number of notes' without qualification; the alternative is a count scoped to the active view/filter. The input's open question leaves this undecided."
-  - id: ASSUM-002
     text: "The web app already has the full note count in client-side state; no backend endpoint or API change is needed to compute it"
     basis: "The request scopes the change to the web app and its tests; the alternative is that the app only knows a page of notes and a truthful total would require a backend change."
-  - id: ASSUM-003
+  - id: ASSUM-002
     text: "The app is a browser-based web app where document.title can be set dynamically from application code"
     basis: "The request says 'browser tab title' and 'web app'; the alternative is an embedded webview that ignores document.title and needs another surfacing mechanism."
-  - id: ASSUM-004
+  - id: ASSUM-003
     text: "The title format is exactly 'Notes (N)' with the literal prefix 'Notes', including 'Notes (0)' for the empty state"
     basis: "The request gives the example 'Notes (3)'; the alternative is preserving an existing app-specific title format with the count appended, or a different empty-state convention."
