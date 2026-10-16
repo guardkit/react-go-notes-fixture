@@ -2,7 +2,7 @@
 
 **Stack**: generic (no stack declared in the request; no codebase scan performed in headless mode)
 **Generated**: 2026-07-09T14:32:00Z
-**Scenarios**: 11 total (2 smoke, 0 regression)
+**Scenarios**: 10 total (2 smoke, 0 regression)
 **Assumptions**: 6 total (0 high / 0 medium / 6 low confidence)
 **Review required**: Yes
 
@@ -10,7 +10,7 @@ REVIEW REQUIRED: all assumptions unconfirmed (--auto mode)
 
 ## Scope
 
-This specification pins the server-side rule that the notes API refuses to create a note whose title is absent, the empty string, or whitespace-only after trimming, answering HTTP 400 Bad Request with a clear message naming the title as the invalid field and persisting nothing. A note with a non-blank title continues to be created and answered exactly as before. Scope is confined to the Go API and its Go tests; no client, schema, migration, or non-Go surface is in scope. The request names no HTTP method or path, so the endpoint is left unspecified rather than guessed.
+This specification pins the server-side rule that the notes API refuses to create a note whose title is absent, the empty string, or whitespace-only after trimming, answering HTTP 400 Bad Request with a clear message identifying the title as the invalid field and persisting nothing. A note with a well-formed title still yields the existing success status and a persisted note, exactly as before. Scope is confined to the Go API and its Go tests; no client, schema, migration, or non-Go surface is in scope. The request names no HTTP method or path, so the endpoint is left unspecified rather than guessed.
 
 ## Scenario Counts by Category
 
@@ -19,7 +19,7 @@ This specification pins the server-side rule that the notes API refuses to creat
 | Key examples (@key-example) | 3 |
 | Boundary conditions (@boundary) | 3 |
 | Negative cases (@negative) | 3 |
-| Edge cases (@edge-case) | 2 |
+| Edge cases (@edge-case) | 1 |
 
 ## Deferred Items
 
@@ -42,14 +42,13 @@ This summary can be passed to `/feature-plan` as a context file:
 
 ## Verifier routing (proposed)
 
-- "A note with a non-blank title is created successfully" → hurl
-- "A note with a non-blank title is answered exactly as before" → hurl
+- "A note with a non-blank title is answered with the existing success status" → hurl
+- "A well-formed title still yields the existing success status and a persisted note" → hurl
 - "A note-creation request with a blank title is rejected with a clear message" → hurl
-- "A title of a single non-whitespace character is accepted" → hurl
+- "A non-blank title of a single character is non-blank" → hurl
 - "A title of a single whitespace character is rejected as blank" → hurl
-- "A title with surrounding whitespace around a non-blank value is accepted" → hurl
-- "A note-creation request with an absent title is rejected" → hurl
-- "A note-creation request with an empty-string title is rejected" → hurl
-- "A note-creation request with a whitespace-only title is rejected" → hurl
-- "A title of only tab and newline characters is rejected as blank" → hurl
-- "A note with a very long non-blank title is created successfully" → hurl
+- "A title that is blank only after trimming is rejected" → hurl
+- "A note-creation request with an omitted title yields 400 Bad Request" → hurl
+- "A note-creation request with an empty string title yields 400 Bad Request" → hurl
+- "A note-creation request with a whitespace-only title yields 400 Bad Request" → hurl
+- "A whitespace-only title composed of tabs and newlines is treated as blank" → hurl

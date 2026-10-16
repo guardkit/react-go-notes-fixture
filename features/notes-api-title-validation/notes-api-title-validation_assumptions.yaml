@@ -4,7 +4,7 @@ stack: generic
 review_required: true
 assumptions:
 - id: ASSUM-001
-  scenario: A note with a non-blank title is created successfully
+  scenario: A note with a non-blank title is answered with the existing success status
   assumption: The note-creation operation is an HTTP endpoint accepting a title, and
     it currently accepts empty or blank titles without complaint
   confidence: low
@@ -31,7 +31,8 @@ assumptions:
     field name, and the exact wording is unspecified
   human_response: deferred
 - id: ASSUM-004
-  scenario: A note with a non-blank title is answered exactly as before
+  scenario: A well-formed title still yields the existing success status and a persisted
+    note
   assumption: The rule is enforced in the Go API request-handling path rather than
     in a database constraint or a client-side check
   confidence: low
@@ -40,7 +41,8 @@ assumptions:
     400 Bad Request with a message
   human_response: deferred
 - id: ASSUM-005
-  scenario: A note with a non-blank title is answered exactly as before
+  scenario: A well-formed title still yields the existing success status and a persisted
+    note
   assumption: The rule applies only to note creation; update/edit operations and other
     fields are out of scope
   confidence: low
@@ -49,7 +51,8 @@ assumptions:
     enter the store through the edit path
   human_response: deferred
 - id: ASSUM-006
-  scenario: A note with a non-blank title is answered exactly as before
+  scenario: A well-formed title still yields the existing success status and a persisted
+    note
   assumption: Existing successful note-creation behaviour and status codes are unchanged
     for non-blank titles; the new rule only adds a rejection path
   confidence: low

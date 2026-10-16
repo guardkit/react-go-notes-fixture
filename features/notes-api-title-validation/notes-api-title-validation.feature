@@ -13,25 +13,25 @@ Feature: Notes API Title Validation
   Background:
     Given the notes API is running
 
-  # Why: "The notes API should refuse to create a note with an empty or blank title, answering 400 Bad Request with a clear message."
+  # Why: "the Go API handler rejects the request with HTTP 400 Bad Request and a clear message naming the offending field"
   # [ASSUMPTION: confidence=low] The note-creation operation is an HTTP endpoint accepting a title, and it currently accepts empty or blank titles without complaint
   @key-example @smoke
-  Scenario: A note with a non-blank title is created successfully
-    Given a note-creation request with the title "Meeting notes"
+  Scenario: A note with a non-blank title is answered with the existing success status
+    Given a note-creation request with a non-blank title
     When the note-creation request is submitted
-    Then the note should be created successfully
-    And the note should be persisted
+    Then the API answers the existing success status
+    And a note is persisted
 
-  # Why: "a note with a non-blank title continues to be created and answered exactly as before."
+  # Why: "a well-formed title still yields the existing success status and a persisted note"
   # [ASSUMPTION: confidence=low] Existing successful note-creation behaviour and status codes are unchanged for non-blank titles; the new rule only adds a rejection path
   # [ASSUMPTION: confidence=low] The rule applies only to note creation; update/edit operations and other fields are out of scope
   # [ASSUMPTION: confidence=low] The rule is enforced in the Go API request-handling path rather than in a database constraint or a client-side check
   @key-example
-  Scenario: A note with a non-blank title is answered exactly as before
-    Given a note-creation request with the title "Shopping list"
+  Scenario: A well-formed title still yields the existing success status and a persisted note
+    Given a note-creation request with a well-formed title
     When the note-creation request is submitted
-    Then the note should be created successfully
-    And the response should be answered exactly as before this change
+    Then the API answers the existing success status
+    And a note is persisted
 
   # Why: "whose title is absent, the empty string, or consists only of whitespace, the Go API handler rejects the request with HTTP 400 Bad Request and a clear message naming the offending field"
   # [ASSUMPTION: confidence=low] The 400 response carries a clear message naming the title as the invalid field
@@ -40,9 +40,9 @@ Feature: Notes API Title Validation
   Scenario Outline: A note-creation request with a blank title is rejected with a clear message
     Given a note-creation request with the title <title>
     When the note-creation request is submitted
-    Then the request should be refused with HTTP 400 Bad Request
-    And the response should carry a clear message naming the title as the invalid field
-    And no note should be persisted
+    Then the API answers HTTP 400 Bad Request
+    And the response body carries a clear message identifying the title as the invalid field
+    And no note is persisted
 
     Examples:
       | title |
@@ -52,69 +52,62 @@ Feature: Notes API Title Validation
 
   # Why: "The handler trims surrounding whitespace before evaluating the title, so a value such as "   " is treated as blank and is not persisted"
   @boundary
-  Scenario: A title of a single non-whitespace character is accepted
-    Given a note-creation request with the title "a"
+  Scenario: A non-blank title of a single character is non-blank
+    Given a note-creation request with a non-blank title of a single character
     When the note-creation request is submitted
-    Then the note should be created successfully
-    And the note should be persisted
+    Then the API answers the existing success status
+    And a note is persisted
 
   # Why: "The handler trims surrounding whitespace before evaluating the title, so a value such as "   " is treated as blank and is not persisted"
   @boundary
   Scenario: A title of a single whitespace character is rejected as blank
-    Given a note-creation request with the title " "
+    Given a note-creation request with a title of a single whitespace character
     When the note-creation request is submitted
-    Then the request should be refused with HTTP 400 Bad Request
-    And the response should carry a clear message naming the title as the invalid field
-    And no note should be persisted
+    Then the API answers HTTP 400 Bad Request
+    And the response body carries a clear message identifying the title as the invalid field
+    And no note is persisted
 
-  # Why: "The handler trims surrounding whitespace before evaluating the title"
+  # Why: "The handler trims surrounding whitespace before evaluating the title, so a value such as "   " is treated as blank"
   @boundary
-  Scenario: A title with surrounding whitespace around a non-blank value is accepted
-    Given a note-creation request with the title "  Meeting notes  "
+  Scenario: A title that is blank only after trimming is rejected
+    Given a note-creation request with a title that is blank only after trimming
     When the note-creation request is submitted
-    Then the note should be created successfully
-    And the note should be persisted
+    Then the API answers HTTP 400 Bad Request
+    And the response body carries a clear message identifying the title as the invalid field
+    And no note is persisted
 
-  # Why: "whose title is absent, the empty string, or consists only of whitespace, the Go API handler rejects the request with HTTP 400 Bad Request"
+  # Why: "an omitted title, an empty string, and a whitespace-only title each yield 400 Bad Request with the clear message asserted on the response body"
   @negative
-  Scenario: A note-creation request with an absent title is rejected
-    Given a note-creation request with the title absent
+  Scenario: A note-creation request with an omitted title yields 400 Bad Request
+    Given a note-creation request with an omitted title
     When the note-creation request is submitted
-    Then the request should be refused with HTTP 400 Bad Request
-    And the response should carry a clear message naming the title as the invalid field
-    And no note should be persisted
+    Then the API answers HTTP 400 Bad Request
+    And the response body carries a clear message identifying the title as the invalid field
+    And no note is persisted
 
-  # Why: "the empty string, or consists only of whitespace, the Go API handler rejects the request with HTTP 400 Bad Request"
+  # Why: "an omitted title, an empty string, and a whitespace-only title each yield 400 Bad Request with the clear message asserted on the response body"
   @negative
-  Scenario: A note-creation request with an empty-string title is rejected
-    Given a note-creation request with the title ""
+  Scenario: A note-creation request with an empty string title yields 400 Bad Request
+    Given a note-creation request with an empty string title
     When the note-creation request is submitted
-    Then the request should be refused with HTTP 400 Bad Request
-    And the response should carry a clear message naming the title as the invalid field
-    And no note should be persisted
+    Then the API answers HTTP 400 Bad Request
+    And the response body carries a clear message identifying the title as the invalid field
+    And no note is persisted
 
-  # Why: "or consists only of whitespace, the Go API handler rejects the request with HTTP 400 Bad Request"
+  # Why: "an omitted title, an empty string, and a whitespace-only title each yield 400 Bad Request with the clear message asserted on the response body"
   @negative
-  Scenario: A note-creation request with a whitespace-only title is rejected
-    Given a note-creation request with the title "   "
+  Scenario: A note-creation request with a whitespace-only title yields 400 Bad Request
+    Given a note-creation request with a whitespace-only title
     When the note-creation request is submitted
-    Then the request should be refused with HTTP 400 Bad Request
-    And the response should carry a clear message naming the title as the invalid field
-    And no note should be persisted
+    Then the API answers HTTP 400 Bad Request
+    And the response body carries a clear message identifying the title as the invalid field
+    And no note is persisted
 
   # Why: "The handler trims surrounding whitespace before evaluating the title, so a value such as "   " is treated as blank and is not persisted"
   @edge-case
-  Scenario: A title of only tab and newline characters is rejected as blank
-    Given a note-creation request with a title consisting only of tab and newline characters
+  Scenario: A whitespace-only title composed of tabs and newlines is treated as blank
+    Given a note-creation request with a whitespace-only title composed of tabs and newlines
     When the note-creation request is submitted
-    Then the request should be refused with HTTP 400 Bad Request
-    And the response should carry a clear message naming the title as the invalid field
-    And no note should be persisted
-
-  # Why: "a note with a non-blank title continues to be created and answered exactly as before"
-  @edge-case
-  Scenario: A note with a very long non-blank title is created successfully
-    Given a note-creation request with a title of one thousand non-whitespace characters
-    When the note-creation request is submitted
-    Then the note should be created successfully
-    And the note should be persisted
+    Then the API answers HTTP 400 Bad Request
+    And the response body carries a clear message identifying the title as the invalid field
+    And no note is persisted

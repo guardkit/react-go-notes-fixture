@@ -1,39 +1,36 @@
 feature: notes-api-title-validation
 generated: "2026-07-09T14:32:00Z"
 scenarios:
-  - title: "A note with a non-blank title is created successfully"
+  - title: "A note with a non-blank title is answered with the existing success status"
     tags: ["@key-example", "@smoke"]
-    sentence: "Submitting a note-creation request with a real, non-blank title creates the note and stores it."
-  - title: "A note with a non-blank title is answered exactly as before"
+    sentence: "Submitting a note-creation request with a real, non-blank title gets the same success answer as always and stores the note."
+  - title: "A well-formed title still yields the existing success status and a persisted note"
     tags: ["@key-example"]
-    sentence: "A note with a real title is created and answered just as it was before the blank-title rule was added."
+    sentence: "A well-formed title gets the existing success status and the note is stored, exactly as before the blank-title rule was added."
   - title: "A note-creation request with a blank title is rejected with a clear message"
     tags: ["@key-example", "@smoke"]
-    sentence: "A note-creation request whose title is missing, empty, or only spaces is refused with a clear message and nothing is stored."
-  - title: "A title of a single non-whitespace character is accepted"
+    sentence: "A note-creation request whose title is missing, empty, or only spaces is refused with 400 and a clear message, and nothing is stored."
+  - title: "A non-blank title of a single character is non-blank"
     tags: ["@boundary"]
-    sentence: "A title that is just one real character counts as non-blank and the note is created."
+    sentence: "A title that is just one real character counts as non-blank, so the note is created."
   - title: "A title of a single whitespace character is rejected as blank"
     tags: ["@boundary"]
-    sentence: "A title that is just one space counts as blank and the note is refused."
-  - title: "A title with surrounding whitespace around a non-blank value is accepted"
+    sentence: "A title that is just one space counts as blank, so the note is refused with 400."
+  - title: "A title that is blank only after trimming is rejected"
     tags: ["@boundary"]
-    sentence: "Extra spaces around a real title are trimmed away and the note is still created."
-  - title: "A note-creation request with an absent title is rejected"
+    sentence: "A title that becomes blank only once its surrounding spaces are trimmed is refused with 400."
+  - title: "A note-creation request with an omitted title yields 400 Bad Request"
     tags: ["@negative"]
-    sentence: "A note-creation request that leaves the title out altogether is refused with a clear message."
-  - title: "A note-creation request with an empty-string title is rejected"
+    sentence: "A note-creation request that leaves the title out altogether is refused with 400 and a clear message."
+  - title: "A note-creation request with an empty string title yields 400 Bad Request"
     tags: ["@negative"]
-    sentence: "A note-creation request whose title is an empty string is refused with a clear message."
-  - title: "A note-creation request with a whitespace-only title is rejected"
+    sentence: "A note-creation request whose title is an empty string is refused with 400 and a clear message."
+  - title: "A note-creation request with a whitespace-only title yields 400 Bad Request"
     tags: ["@negative"]
-    sentence: "A note-creation request whose title is only spaces is refused with a clear message."
-  - title: "A title of only tab and newline characters is rejected as blank"
+    sentence: "A note-creation request whose title is only spaces is refused with 400 and a clear message."
+  - title: "A whitespace-only title composed of tabs and newlines is treated as blank"
     tags: ["@edge-case"]
-    sentence: "A title made only of tabs and newlines is treated as blank and the note is refused."
-  - title: "A note with a very long non-blank title is created successfully"
-    tags: ["@edge-case"]
-    sentence: "A note with a very long but real title is still created and stored."
+    sentence: "A title made only of tabs and newlines is treated as blank and refused with 400."
 assumptions:
   - id: ASSUM-001
     text: "The note-creation operation is an HTTP endpoint accepting a title, and it currently accepts empty or blank titles without complaint"
