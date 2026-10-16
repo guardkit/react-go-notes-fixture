@@ -19,6 +19,15 @@ type PGStore struct{ Pool *pgxpool.Pool }
 // listLimit bounds one page of notes; the fixture has no paging.
 const listLimit = 100
 
+// storageTitle is the last step before a note title is written: the standard
+// library trim of leading and trailing whitespace, with the interior left
+// exactly as it was. It is the one normalisation every write path applies -
+// Create today, and an update path whenever one joins it - so the title that
+// reaches storage is trimmed whatever the caller handed over.
+func storageTitle(label string) string {
+	return strings.TrimSpace(label)
+}
+
 // Create inserts one note for owner inside a transaction, with bound SQL.
 func (s PGStore) Create(ctx context.Context, owner, label string) (note Note, err error) {
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -37,7 +46,7 @@ func (s PGStore) Create(ctx context.Context, owner, label string) (note Note, er
 	// The last step before the row is written: the title reaches storage without
 	// its surrounding whitespace, so the stored row - and the label this call
 	// reads back from RETURNING - can never carry it. Only the edges are cut.
-	label = strings.TrimSpace(label)
+	label = storageTitle(label)
 	var id int64
 	if err := tx.QueryRow(queryCtx,
 		"INSERT INTO notes (owner_sub, label) VALUES ($1, $2) RETURNING id, label, created_at", owner, label,

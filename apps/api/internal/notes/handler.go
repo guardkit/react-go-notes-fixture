@@ -72,7 +72,7 @@ func Routes(store Store, authn Authenticator, runID string) http.Handler {
 		// The title is trimmed at the hand-off to persistence, so whatever the
 		// store writes - and so whatever the response echoes back - is the
 		// trimmed title, whatever the client padded it with.
-		note, err := store.Create(r.Context(), owner, strings.TrimSpace(label))
+		note, err := store.Create(r.Context(), owner, storageTitle(label))
 		if err != nil {
 			slog.ErrorContext(r.Context(), "create note failed")
 			writeError(w, http.StatusInternalServerError, "Service unavailable")

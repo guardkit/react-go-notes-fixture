@@ -302,6 +302,28 @@ func TestWhitespaceOnlyTitleTrimsToAnEmptyTitle(t *testing.T) {
 	}
 }
 
+// The trim lives at the persistence boundary rather than in one handler: every
+// note write reaches storage through storageTitle, so the title that is written
+// is trimmed at the edges only - by the create path today, and by an update path
+// whenever one joins it - whatever the caller handed over. The interior is never
+// rewritten, and a title that is nothing but whitespace reaches storage empty.
+func TestStorageTitleIsTheTrimEveryWritePathApplies(t *testing.T) {
+	cases := []struct{ name, submitted, stored string }{
+		{"leading only", "   hello", "hello"},
+		{"trailing only", "hello   ", "hello"},
+		{"leading and trailing", "   hello   ", "hello"},
+		{"nothing to cut", "hello world", "hello world"},
+		{"interior kept, edges cut", "  My  Note  Title  ", "My  Note  Title"},
+		{"tabs and newlines at the edges", "\t\nhello\r\n", "hello"},
+		{"whitespace only", " \t\n ", ""},
+	}
+	for _, tc := range cases {
+		if got := storageTitle(tc.submitted); got != tc.stored {
+			t.Fatalf("%s: title reaching storage %q, want %q", tc.name, got, tc.stored)
+		}
+	}
+}
+
 func TestListIsScopedToTheSignedInOwner(t *testing.T) {
 	store := &fakeStore{list: []Note{{ID: "2", Label: "second", CreatedAt: created}}}
 	got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodGet, "/api/notes", "", goodToken)
