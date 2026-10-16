@@ -60,8 +60,9 @@ func request(handler http.Handler, method, path, body, token string) *httptest.R
 
 func TestRejectsInvalidJSONBeforePersistence(t *testing.T) {
 	cases := []string{
-		`{}`,
-		`{"label":"   "}`,
+		// A blank title (absent, empty or whitespace-only) is a decodable body
+		// refused by the validation rule, not by the decoder, so those cases
+		// live in TestRefusesBlankTitleBeforePersistence.
 		`{"label":"ok","extra":1}`,
 		`{"label":"ok"}{"label":"again"}`,
 		`["ok"]`,
@@ -89,6 +90,37 @@ func TestRejectsInvalidJSONBeforePersistence(t *testing.T) {
 	}
 }
 
+// blankTitle is the whole 400 body a blank title must answer: a plain message
+// naming the title as the invalid field, not the generic "Invalid request".
+const blankTitle = "{\"message\":\"label (title) must not be blank\"}\n"
+
+// Every blank title - absent, empty, whitespace-only, or blank once the
+// surrounding whitespace is trimmed - is refused by the create handler before
+// store.Create is ever called.
+func TestRefusesBlankTitleBeforePersistence(t *testing.T) {
+	cases := []struct {
+		name, body string
+	}{
+		{"absent title", `{}`},
+		{"empty string", `{"label":""}`},
+		{"spaces", `{"label":"   "}`},
+		{"tabs", `{"label":"\t\t"}`},
+		{"newlines", `{"label":"\n"}`},
+		{"mixed whitespace", `{"label":" \t\n "}`},
+		{"blank once trimmed", `{"label":"\u00a0\u2003"}`},
+	}
+	for _, tc := range cases {
+		store := &fakeStore{note: Note{ID: "1", Label: "x", CreatedAt: created}}
+		got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodPost, "/api/notes", tc.body, goodToken)
+		if got.Code != http.StatusBadRequest || got.Body.String() != blankTitle {
+			t.Fatalf("%s: got %d %q", tc.name, got.Code, got.Body.String())
+		}
+		if store.calls != 0 {
+			t.Fatalf("%s: refused title reached persistence", tc.name)
+		}
+	}
+}
+
 // titleTooLong is the whole 400 body an over-long title must answer: a plain
 // message naming the title field and the 200-character limit (ASSUM-004).
 const titleTooLong = "{\"message\":\"label (title) must be 200 characters or fewer\"}\n"
@@ -104,6 +136,7 @@ func TestTitleLengthBoundaryAtCreation(t *testing.T) {
 		stored string
 	}{
 		{"short", "hello", "hello"},
+		{"single character", "x", "x"},
 		{"one under the limit", strings.Repeat("x", 199), strings.Repeat("x", 199)},
 		{"at the limit", strings.Repeat("x", 200), strings.Repeat("x", 200)},
 		{"above the superseded 80-character rule", strings.Repeat("x", 81), strings.Repeat("x", 81)},

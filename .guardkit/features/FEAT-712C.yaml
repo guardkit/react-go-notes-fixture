@@ -1,0 +1,80 @@
+id: FEAT-712C
+name: "Notes API Title Validation"
+description: "The notes API refuses to create a note with an empty or blank title, answering 400 Bad Request with a clear message. Change only the Go API and its Go tests."
+created: "2026-07-09T14:32:00Z"
+status: planned
+complexity: 4
+estimated_tasks: 2
+
+feature_files:
+  - features/notes-api-title-validation/notes-api-title-validation.feature
+
+scenario_owners:
+  "A note with a non-blank title is answered with the existing success status": TASK-712C-001
+  "A well-formed title still yields the existing success status and a persisted note": TASK-712C-001
+  "A note-creation request with a blank title is rejected with a clear message": TASK-712C-001
+  "A non-blank title of a single character is non-blank": TASK-712C-001
+  "A title of a single whitespace character is rejected as blank": TASK-712C-001
+  "A title that is blank only after trimming is rejected": TASK-712C-001
+  "A note-creation request with an omitted title yields 400 Bad Request": TASK-712C-001
+  "A note-creation request with an empty string title yields 400 Bad Request": TASK-712C-001
+  "A note-creation request with a whitespace-only title yields 400 Bad Request": TASK-712C-001
+  "A whitespace-only title composed of tabs and newlines is treated as blank": TASK-712C-001
+
+tasks:
+  - id: TASK-712C-001
+    name: "Enforce blank-title rejection in the Go notes API and its Go tests"
+    file_path: "tasks/backlog/notes-api-title-validation/TASK-712C-001-enforce-blank-title-rejection.md"
+    complexity: 4
+    dependencies: []
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 45
+
+  - id: TASK-712C-002
+    name: "Add Go tests covering every blank-title scenario at the create endpoint"
+    file_path: "tasks/backlog/notes-api-title-validation/TASK-712C-002-add-blank-title-go-tests.md"
+    complexity: 3
+    dependencies:
+      - TASK-712C-001
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 30
+
+orchestration:
+  parallel_groups:
+    - - TASK-712C-001
+    - - TASK-712C-002
+  estimated_duration_minutes: 75
+  recommended_parallel: 1
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note with a non-blank title is answered with the existing success status":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A well-formed title still yields the existing success status and a persisted note":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note-creation request with a blank title is rejected with a clear message":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A non-blank title of a single character is non-blank":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A title of a single whitespace character is rejected as blank":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A title that is blank only after trimming is rejected":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note-creation request with an omitted title yields 400 Bad Request":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note-creation request with an empty string title yields 400 Bad Request":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note-creation request with a whitespace-only title yields 400 Bad Request":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A whitespace-only title composed of tabs and newlines is treated as blank":
+    verifier: "exam"

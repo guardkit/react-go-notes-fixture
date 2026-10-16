@@ -1,0 +1,29 @@
+format_version: '2.0'
+task_id: TASK-712C-001
+registered_at:
+  sha: 00711dba5442b09ce966f83d637cbf96944606aa
+  date: '2026-10-16'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-api-title-validation-AC-001
+  text: A note with a non-blank title is answered with the existing success status
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-api-title-validation-AC-002
+  text: A well-formed title still yields the existing success status and a persisted
+    note
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-api-title-validation-AC-003
+  text: A note-creation request with a blank title is rejected with a clear message
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation
