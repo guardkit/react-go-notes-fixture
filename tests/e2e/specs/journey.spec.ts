@@ -74,6 +74,37 @@ async function expectTotalAboveList(
   expect(summaryBox.y + summaryBox.height).toBeLessThanOrEqual(listBox.y);
 }
 
+// The tab title is the same count at the browser's own surface, and exactly
+// "Notes (N)" rather than a title that merely contains it, so no other text
+// can hide in it. Read once the total above the list has settled: the title
+// and the list are committed from the one collection in the one render.
+async function expectTabTitle(page: Page, expected: number): Promise<void> {
+  const title = await page.title();
+  expect(title, "the tab title is the count and nothing else").toBe(
+    `Notes (${expected})`,
+  );
+  expect(title).toMatch(/^Notes \(\d+\)$/);
+}
+
+// A marker held on the window object, which only loading a page again can
+// clear. Armed before an action and checked after it, it proves the tab title
+// moved with the note itself and not with a fresh page.
+const NO_RELOAD = "__notesNoReload";
+
+async function armNoReload(page: Page): Promise<void> {
+  await page.evaluate((key: string) => {
+    (window as unknown as Record<string, unknown>)[key] = true;
+  }, NO_RELOAD);
+}
+
+function noReloadArmed(page: Page): Promise<boolean> {
+  return page.evaluate(
+    (key: string) =>
+      (window as unknown as Record<string, unknown>)[key] === true,
+    NO_RELOAD,
+  );
+}
+
 test("sign in, create a note, reload, sign out, anonymous API refused", async ({
   page,
   playwright,
@@ -95,6 +126,8 @@ test("sign in, create a note, reload, sign out, anonymous API refused", async ({
 
   // The total above the list is the size of this owner's own collection.
   await expectTotalAboveList(summary, list, seeded);
+  // The tab title carries that same count from the first showing of the list.
+  await expectTabTitle(page, seeded);
   await page.screenshot({
     path: testInfo.outputPath("notes-count-before-create.png"),
   });
@@ -103,11 +136,16 @@ test("sign in, create a note, reload, sign out, anonymous API refused", async ({
     contentType: "image/png",
   });
 
+  await armNoReload(page);
   await page.getByLabel("New note").fill(label);
   await page.getByRole("button", { name: "Save" }).click();
   await expect(list.getByText(label)).toBeVisible();
   // One note added to the collection is one note more above the list.
   await expectTotalAboveList(summary, list, seeded + 1);
+  // The note moved the tab title with it on the page already open: the marker
+  // armed before the save is still there, so nothing reloaded the page.
+  await expectTabTitle(page, seeded + 1);
+  expect(await noReloadArmed(page)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("after-create.png") });
   await testInfo.attach("after-create", {
     path: testInfo.outputPath("after-create.png"),
@@ -117,6 +155,8 @@ test("sign in, create a note, reload, sign out, anonymous API refused", async ({
   // Tokens live in memory, so a reload signs in again through Keycloak's
   // session; the note must come back from PostgreSQL.
   await page.reload();
+  // The reload clears the marker: the check made of it above was a real one.
+  expect(await noReloadArmed(page)).toBe(false);
   const listedAfterReload = ownerCollection(page);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByTestId("signed-in-user")).toHaveText(user.username);
@@ -127,6 +167,9 @@ test("sign in, create a note, reload, sign out, anonymous API refused", async ({
   const persisted = await listedAfterReload;
   expect(persisted).toBe(seeded + 1);
   await expectTotalAboveList(summary, list, persisted);
+  // A reloaded page titles its tab from the collection it reloaded, so the
+  // tab and the list come back from the one source together.
+  await expectTabTitle(page, persisted);
   await page.screenshot({ path: testInfo.outputPath("after-reload.png") });
   await testInfo.attach("after-reload", {
     path: testInfo.outputPath("after-reload.png"),

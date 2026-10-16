@@ -191,6 +191,9 @@ class FDocument extends FNode {
   head: FElement;
   body: FElement;
   activeElement: FElement;
+  // The browser tab title, as `document.title` is for a real document: what
+  // the view writes here is what the tab shows.
+  title = "";
   defaultView: unknown = null;
 
   constructor() {
@@ -447,9 +450,23 @@ function totalAboveTheList(container: FElement): FElement {
   return total;
 }
 
+/** The browser tab title, read where a person sees it: `document.title`. */
+function tabTitle(): string {
+  return doc.title;
+}
+
+/** The number in the tab title's "Notes (N)". NaN if it is in no such format. */
+function tabTitleCount(): number {
+  const match = /^Notes \((\d+)\)$/.exec(tabTitle());
+  return match ? Number(match[1]) : Number.NaN;
+}
+
 afterEach(async () => {
   await flush(closeView);
   world.collection = [];
+  // A title is never inherited from the case before it, so no assertion here
+  // can pass on a stale tab title.
+  doc.title = "";
 });
 
 describe("total note count above the notes list", () => {
@@ -509,5 +526,90 @@ describe("total note count above the notes list", () => {
     expect(notesList(container).contains(totalAboveTheList(container))).toBe(
       false,
     );
+  });
+});
+
+// The tab title is the same count seen at a different surface, so every case
+// here reads `document.title` and compares it with what the list actually
+// renders, never with a number the test computed for the component.
+describe("note count in the browser tab title", () => {
+  it.each([0, 1, 3, 100])(
+    'titles the tab "Notes (%i)" and holds no other text',
+    async (size) => {
+      const notes = collectionOf(size);
+      const container = await viewNotes(notes);
+      expect(tabTitle()).toBe(`Notes (${size})`);
+      // The literal prefix, the count, and nothing else in the tab.
+      expect(tabTitle()).toMatch(/^Notes \(\d+\)$/);
+      // The title counts the very notes the list renders.
+      expect(noteRows(container)).toHaveLength(notes.length);
+      expect(tabTitleCount()).toBe(noteRows(container).length);
+    },
+  );
+
+  it("carries the count the moment the list is first shown", async () => {
+    const container = await viewNotes(collectionOf(3));
+    expect(tabTitle()).toBe("Notes (3)");
+    // The two surfaces of the one collection agree on load.
+    expect(totalAboveTheList(container).textContent).toBe("3 notes");
+    expect(tabTitleCount()).toBe(
+      Number(totalAboveTheList(container).textContent.replace(" notes", "")),
+    );
+  });
+
+  it("titles an empty collection Notes (0)", async () => {
+    const container = await viewNotes([]);
+    expect(tabTitle()).toBe("Notes (0)");
+    expect(noteRows(container)).toHaveLength(0);
+  });
+
+  it("counts the note the view itself adds, without a reload", async () => {
+    const container = await viewNotes(collectionOf(2));
+    expect(tabTitle()).toBe("Notes (2)");
+    await saveNote(container, "Note 3");
+    // The same view, never reloaded: the title moved with the row it added.
+    expect(tabTitle()).toBe("Notes (3)");
+    expect(noteRows(container)).toHaveLength(3);
+    expect(tabTitleCount()).toBe(noteRows(container).length);
+  });
+
+  it("drops the count when the last note is gone from the collection", async () => {
+    const notes = collectionOf(1);
+    await viewNotes(notes);
+    expect(tabTitle()).toBe("Notes (1)");
+    // The view offers no delete control, so a note leaves the collection
+    // between one showing of the list and the next. The title is derived from
+    // that collection again, so it cannot keep the count it last showed.
+    notes.length = 0;
+    const container = await viewNotes(notes);
+    expect(tabTitle()).toBe("Notes (0)");
+    expect(tabTitle()).not.toBe("Notes (1)");
+    expect(noteRows(container)).toHaveLength(0);
+  });
+
+  it("settles on the list's count after an add and a removal", async () => {
+    const notes = collectionOf(2);
+    const container = await viewNotes(notes);
+    expect(tabTitle()).toBe("Notes (2)");
+    await saveNote(container, "Note 3");
+    expect(tabTitle()).toBe("Notes (3)");
+    // The added note is then the one that leaves the collection the list is
+    // next shown over: the title lands on that list's count, not between.
+    notes.pop();
+    const shown = await viewNotes(notes);
+    expect(tabTitle()).toBe("Notes (2)");
+    expect(tabTitleCount()).toBe(noteRows(shown).length);
+  });
+
+  it("titles the tab from the collection the list shows, not from a copy", async () => {
+    const notes = collectionOf(4);
+    const container = await viewNotes(notes);
+    expect(tabTitle()).toBe("Notes (4)");
+    await saveNote(container, "Note 5");
+    // Five notes shown, five notes titled: the title and the list are one
+    // collection, so neither can be ahead of the other.
+    expect(noteRows(container)).toHaveLength(5);
+    expect(tabTitle()).toBe("Notes (5)");
+    expect(totalAboveTheList(container).textContent).toBe("5 notes");
   });
 });
