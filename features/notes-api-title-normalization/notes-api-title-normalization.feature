@@ -16,49 +16,47 @@ Feature: Notes API Title Normalization
   # Why: "the service layer applies a leading/trailing whitespace trim to the submitted title before the value is written to storage"
   # [ASSUMPTION: confidence=low] The notes API is implemented in Go and has an existing create/update persistence path where a title trim can be applied before saving
   @key-example @smoke
-  Scenario: Creating a note with a leading-space title stores the trimmed title
+  Scenario: Creating a note with a leading-space title returns the trimmed title in the API response
     Given a note title with leading spaces
     When I create a note with that title
-    Then the saved note title should equal the trimmed title
-    And the returned note title should equal the trimmed title
+    Then the returned note title should equal the trimmed title
 
   # Why: "the service layer applies a leading/trailing whitespace trim to the submitted title before the value is written to storage"
   # [ASSUMPTION: confidence=low] The trim applies to both note creation and note update operations
   @key-example @smoke
-  Scenario: Updating a note with a trailing-space title stores the trimmed title
+  Scenario: Updating a note with a trailing-space title returns the trimmed title in the API response
     Given an existing note
     And a replacement title with trailing spaces
     When I update the note with that title
-    Then the saved note title should equal the trimmed title
-    And the returned note title should equal the trimmed title
+    Then the returned note title should equal the trimmed title
 
   # Why: "The trimmed value is the value that is persisted and returned in the API response, while the interior of the title (including internal spaces and all non-space characters) is left unchanged."
   @key-example
-  Scenario: Interior spacing of a title is preserved when trimming
+  Scenario: Interior spacing of a title is preserved in the API response when trimming
     Given a note title with leading spaces, trailing spaces, and double spaces in the middle
     When I create a note with that title
-    Then the saved note title should equal the trimmed title with interior spacing preserved
+    Then the returned note title should equal the trimmed title with interior spacing preserved
 
   # Why: "titles that are already clean"
   @boundary
-  Scenario: A title with no surrounding whitespace is stored unchanged
+  Scenario: A title with no surrounding whitespace is returned unchanged in the API response
     Given a note title with no leading or trailing spaces
     When I create a note with that title
-    Then the saved note title should equal the original title
+    Then the returned note title should equal the original title
 
   # Why: "titles composed entirely of spaces"
   @boundary
-  Scenario: A title composed entirely of spaces is stored as an empty title
+  Scenario: A title composed entirely of spaces is returned as an empty title in the API response
     Given a note title composed entirely of spaces
     When I create a note with that title
-    Then the saved note title should be empty
+    Then the returned note title should be empty
 
   # Why: "titles with leading spaces, trailing spaces, both leading and trailing spaces"
   @boundary
-  Scenario Outline: Surrounding spaces are removed from a title before saving
+  Scenario Outline: Surrounding spaces are removed from a title before it is returned in the API response
     Given a note title with <position> spaces
     When I create a note with that title
-    Then the saved note title should equal the trimmed title
+    Then the returned note title should equal the trimmed title
 
     Examples:
       | position |

@@ -4,14 +4,16 @@ stack: generic
 review_required: true
 assumptions:
 - id: ASSUM-001
-  scenario: Updating a note with a trailing-space title stores the trimmed title
+  scenario: Updating a note with a trailing-space title returns the trimmed title
+    in the API response
   assumption: The trim applies to both note creation and note update operations
   confidence: low
   basis: The request says 'before saving it' without naming a path; the proposal assumes
     both create and update trim, versus trimming only on creation
   human_response: deferred
 - id: ASSUM-002
-  scenario: Creating a note with a leading-space title stores the trimmed title
+  scenario: Creating a note with a leading-space title returns the trimmed title in
+    the API response
   assumption: The notes API is implemented in Go and has an existing create/update
     persistence path where a title trim can be applied before saving
   confidence: low
