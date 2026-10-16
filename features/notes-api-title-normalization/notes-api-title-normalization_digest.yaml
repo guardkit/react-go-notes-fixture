@@ -1,0 +1,40 @@
+feature: notes-api-title-normalization
+generated: "2026-08-14T12:00:00Z"
+scenarios:
+  - title: "Creating a note with a leading-space title stores the trimmed title"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Creating a note whose title has spaces at the front saves and returns the title with those front spaces removed."
+  - title: "Updating a note with a trailing-space title stores the trimmed title"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Editing a note to a title that has spaces at the end saves and returns the title with those end spaces removed."
+  - title: "Interior spacing of a title is preserved when trimming"
+    tags: ["@key-example"]
+    sentence: "Trimming a title only removes spaces at the edges and leaves the spaces inside the title exactly as they were."
+  - title: "A title with no surrounding whitespace is stored unchanged"
+    tags: ["@boundary"]
+    sentence: "A title that already has no spaces at either end is saved exactly as it was given."
+  - title: "A title composed entirely of spaces is stored as an empty title"
+    tags: ["@boundary"]
+    sentence: "A title made up only of spaces is saved as an empty title."
+  - title: "Surrounding spaces are removed from a title before saving"
+    tags: ["@boundary"]
+    sentence: "Spaces at the start, the end, or both ends of a title are removed before the title is saved."
+  - title: "A title that trims to empty is saved as an empty title rather than rejected"
+    tags: ["@negative"]
+    sentence: "A title that becomes empty once its surrounding spaces are removed is saved as an empty title instead of being refused."
+  - title: "Surrounding whitespace other than spaces is removed from a title"
+    tags: ["@edge-case"]
+    sentence: "Whitespace such as tabs or newlines at the edges of a title is removed before the title is saved."
+assumptions:
+  - id: ASSUM-001
+    text: "The trim applies to both note creation and note update operations"
+    basis: "The request says 'before saving it' without naming a path; the proposal assumes both create and update trim, versus trimming only on creation"
+  - id: ASSUM-002
+    text: "Trimming removes all surrounding whitespace (Go strings.TrimSpace semantics), not only literal space characters"
+    basis: "The request says 'spaces'; the proposal assumes spaces plus standard whitespace via Go's strings.TrimSpace semantics, versus stripping only literal U+0020 spaces"
+  - id: ASSUM-003
+    text: "A title that is entirely whitespace is saved as an empty string rather than rejected as empty"
+    basis: "The request does not specify validation behavior; the proposal assumes saving an empty title, versus rejecting the note as having an empty title"
+  - id: ASSUM-004
+    text: "The notes API is implemented in Go and has an existing create/update persistence path where a title trim can be applied before saving"
+    basis: "The request says 'Change only the Go API and its Go tests'; the proposal assumes an existing Go persistence path, versus titles being normalized elsewhere"
