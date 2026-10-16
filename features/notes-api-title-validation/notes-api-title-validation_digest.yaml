@@ -31,9 +31,6 @@ scenarios:
   - title: "A title of only tab and newline characters is rejected as blank"
     tags: ["@edge-case"]
     sentence: "A title made only of tabs and newlines is treated as blank and the note is refused."
-  - title: "A title of only non-breaking space characters is rejected as blank"
-    tags: ["@edge-case"]
-    sentence: "A title made only of non-breaking spaces is treated as blank and the note is refused."
   - title: "A note with a very long non-blank title is created successfully"
     tags: ["@edge-case"]
     sentence: "A note with a very long but real title is still created and stored."

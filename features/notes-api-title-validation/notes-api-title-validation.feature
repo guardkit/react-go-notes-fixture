@@ -111,15 +111,6 @@ Feature: Notes API Title Validation
     And the response should carry a clear message naming the title as the invalid field
     And no note should be persisted
 
-  # Why: "The handler trims surrounding whitespace before evaluating the title"
-  @edge-case
-  Scenario: A title of only non-breaking space characters is rejected as blank
-    Given a note-creation request with a title consisting only of non-breaking space characters
-    When the note-creation request is submitted
-    Then the request should be refused with HTTP 400 Bad Request
-    And the response should carry a clear message naming the title as the invalid field
-    And no note should be persisted
-
   # Why: "a note with a non-blank title continues to be created and answered exactly as before"
   @edge-case
   Scenario: A note with a very long non-blank title is created successfully

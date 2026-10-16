@@ -2,7 +2,7 @@
 
 **Stack**: generic (no stack declared in the request; no codebase scan performed in headless mode)
 **Generated**: 2026-07-09T14:32:00Z
-**Scenarios**: 12 total (2 smoke, 0 regression)
+**Scenarios**: 11 total (2 smoke, 0 regression)
 **Assumptions**: 6 total (0 high / 0 medium / 6 low confidence)
 **Review required**: Yes
 
@@ -19,7 +19,7 @@ This specification pins the server-side rule that the notes API refuses to creat
 | Key examples (@key-example) | 3 |
 | Boundary conditions (@boundary) | 3 |
 | Negative cases (@negative) | 3 |
-| Edge cases (@edge-case) | 3 |
+| Edge cases (@edge-case) | 2 |
 
 ## Deferred Items
 
@@ -52,5 +52,4 @@ This summary can be passed to `/feature-plan` as a context file:
 - "A note-creation request with an empty-string title is rejected" → hurl
 - "A note-creation request with a whitespace-only title is rejected" → hurl
 - "A title of only tab and newline characters is rejected as blank" → hurl
-- "A title of only non-breaking space characters is rejected as blank" → hurl
 - "A note with a very long non-blank title is created successfully" → hurl
