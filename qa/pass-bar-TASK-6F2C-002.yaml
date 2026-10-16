@@ -1,0 +1,30 @@
+format_version: '2.0'
+task_id: TASK-6F2C-002
+registered_at:
+  sha: 8d30675617a3d83ec29eac59b60b83e6bdcf9895
+  date: '2026-10-16'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-api-title-normalization-AC-001
+  text: Creating a note with a leading-space title returns the trimmed title in the
+    API response
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-api-title-normalization-AC-002
+  text: Updating a note with a trailing-space title returns the trimmed title in the
+    API response
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-api-title-normalization-AC-003
+  text: Interior spacing of a title is preserved in the API response when trimming
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation

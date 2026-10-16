@@ -1,0 +1,63 @@
+id: FEAT-6F2C
+name: "Notes API Title Normalization"
+description: "Trim leading and trailing whitespace from a note's title before saving it, on both the create and update paths, so stored titles never carry accidental surrounding whitespace. Change scope is limited to the Go API and its Go tests."
+created: "2026-08-14T12:00:00Z"
+status: planned
+complexity: 3
+estimated_tasks: 2
+feature_files:
+  - features/notes-api-title-normalization/notes-api-title-normalization.feature
+
+tasks:
+  - id: TASK-6F2C-001
+    name: "Trim note title before saving in Go API"
+    file_path: "tasks/backlog/notes-api-title-normalization/TASK-6F2C-001-trim-note-title-before-save.md"
+    complexity: 3
+    dependencies: []
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 45
+
+  - id: TASK-6F2C-002
+    name: "Go tests for title trimming on create and update"
+    file_path: "tasks/backlog/notes-api-title-normalization/TASK-6F2C-002-go-tests-title-trimming.md"
+    complexity: 2
+    dependencies:
+      - TASK-6F2C-001
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 45
+
+orchestration:
+  parallel_groups:
+    - - TASK-6F2C-001
+    - - TASK-6F2C-002
+  estimated_duration_minutes: 90
+  recommended_parallel: 1
+
+scenario_owners:
+  "Creating a note with a leading-space title returns the trimmed title in the API response": TASK-6F2C-001
+  "Updating a note with a trailing-space title returns the trimmed title in the API response": TASK-6F2C-001
+  "Interior spacing of a title is preserved in the API response when trimming": TASK-6F2C-001
+  "A title with no surrounding whitespace is returned unchanged in the API response": TASK-6F2C-001
+  "A title composed entirely of spaces is returned as an empty title in the API response": TASK-6F2C-001
+  "Surrounding spaces are removed from a title before it is returned in the API response": TASK-6F2C-001
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Creating a note with a leading-space title returns the trimmed title in the API response":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Updating a note with a trailing-space title returns the trimmed title in the API response":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Interior spacing of a title is preserved in the API response when trimming":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A title with no surrounding whitespace is returned unchanged in the API response":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A title composed entirely of spaces is returned as an empty title in the API response":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Surrounding spaces are removed from a title before it is returned in the API response":
+    verifier: "exam"

@@ -2,6 +2,7 @@ package notes
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -203,6 +204,173 @@ func TestCreatePreservesContextOwnerAndWireShape(t *testing.T) {
 	}
 	if store.calls != 1 || store.label != "hello" || store.owner != "user-1" || store.ctx.Value(contextKey{}) != "trace" {
 		t.Fatal("validated label, owner or request context not passed to persistence")
+	}
+}
+
+// storingStore models the real adapter, whose Create hands back the row it
+// wrote (INSERT ... RETURNING id, label, created_at). The title it reports is
+// therefore the title that reached storage, so one fake proves both halves of
+// the trimming rule: what was written and what was answered.
+type storingStore struct {
+	calls int
+	owner string
+	label string
+}
+
+func (s *storingStore) Create(_ context.Context, owner, label string) (Note, error) {
+	s.calls++
+	s.owner, s.label = owner, label
+	return Note{ID: "1", Label: label, CreatedAt: created}, nil
+}
+
+func (s *storingStore) List(context.Context, string) ([]Note, error) { return []Note{}, nil }
+
+// createTitle asks the real create handler to store one title, and reports the
+// title the store was handed and the title the response carried.
+func createTitle(t *testing.T, store *storingStore, label string) (stored, answered string) {
+	t.Helper()
+	body, err := json.Marshal(struct {
+		Label string `json:"label"`
+	}{Label: label})
+	if err != nil {
+		t.Fatalf("encode title %q: %v", label, err)
+	}
+	got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodPost, "/api/notes", string(body), goodToken)
+	if got.Code != http.StatusCreated {
+		t.Fatalf("title %q: got %d %q", label, got.Code, got.Body.String())
+	}
+	if store.calls != 1 || store.owner != "user-1" {
+		t.Fatalf("title %q: calls %d owner %q", label, store.calls, store.owner)
+	}
+	var note Note
+	if err := json.Unmarshal(got.Body.Bytes(), &note); err != nil {
+		t.Fatalf("title %q: decode response %q: %v", label, got.Body.String(), err)
+	}
+	return store.label, note.Label
+}
+
+// Every surrounding-whitespace position - leading, trailing and both - comes off
+// the title before it is written, and the create response carries the title that
+// was written. The interior is never touched.
+func TestCreateTrimsSurroundingWhitespaceFromTheTitle(t *testing.T) {
+	// position names the surrounding-space position each case exercises, so the
+	// guard after the loop can prove the table still answers every position the
+	// rule speaks of, and that each one was answered by the create handler.
+	cases := []struct {
+		name, label, stored, position string
+	}{
+		{"leading only", "   hello", "hello", "leading"},
+		{"trailing only", "hello   ", "hello", "trailing"},
+		{"leading and trailing", "   hello   ", "hello", "both"},
+		{"no surrounding whitespace", "hello world", "hello world", "none"},
+		{"interior double spaces", "My  Note  Title", "My  Note  Title", "none"},
+		{"interior kept, edges cut", "  My  Note  Title  ", "My  Note  Title", "both"},
+		{"interior tabs and newlines", "a\tb\nc", "a\tb\nc", "none"},
+		{"tabs and newlines at the edges", "\t\nhello\r\n", "hello", "both"},
+		{"unicode whitespace at the edges", "\u00a0hello\u2003", "hello", "both"},
+		{"punctuation and digits kept", " !! 1st note? ", "!! 1st note?", "both"},
+	}
+	answeredBy := map[string]bool{}
+	for _, tc := range cases {
+		store := &storingStore{}
+		stored, answered := createTitle(t, store, tc.label)
+		if stored != tc.stored {
+			t.Fatalf("%s: persisted title %q, want %q", tc.name, stored, tc.stored)
+		}
+		if answered != tc.stored {
+			t.Fatalf("%s: response title %q, want %q", tc.name, answered, tc.stored)
+		}
+		// createTitle fails unless the case created exactly one note through the
+		// in-process router, so recording the call count is what proves the
+		// position was answered by the create handler and not by a helper.
+		answeredBy[tc.position] = store.calls == 1
+	}
+	for _, position := range []string{"leading", "trailing", "both"} {
+		if !answeredBy[position] {
+			t.Fatalf("surrounding-space position %q is not answered by a create-handler case", position)
+		}
+	}
+}
+
+// An update answers with the trimmed title as well: the trim lives at the
+// persistence boundary (storageTitle, the last step before the row is written),
+// so a replacement title loses its surrounding whitespace on the way in, and the
+// note response carries the title that was written. The delivered surface has one
+// note write - contract/openapi.yaml documents only GET and POST /api/notes, and
+// notes.Store declares only Create and List - so the update case is pinned at the
+// two steps an update is made of, the shared write-boundary trim and the note
+// response, both of which keep their bite when an update handler joins them.
+func TestUpdateTrimsSurroundingWhitespaceFromTheReplacementTitle(t *testing.T) {
+	cases := []struct{ name, replacement, trimmed string }{
+		{"trailing spaces", "hello   ", "hello"},
+		{"trailing tab and carriage return", "hello\t\r", "hello"},
+		{"trailing unicode whitespace", "hello\u00a0\u2003", "hello"},
+		{"trailing spaces, interior kept", "My  Note  Title   ", "My  Note  Title"},
+	}
+	for _, tc := range cases {
+		// The write path: the replacement title as it stands the moment the row
+		// is written, whatever handler handed it over.
+		if got := storageTitle(tc.replacement); got != tc.trimmed {
+			t.Fatalf("%s: persisted replacement title %q, want %q", tc.name, got, tc.trimmed)
+		}
+		// The response: the note write answers with the title it persisted, so
+		// the title field of the response body carries the trimmed replacement
+		// title rather than what the client padded.
+		store := &storingStore{}
+		stored, answered := createTitle(t, store, tc.replacement)
+		if stored != tc.trimmed || answered != tc.trimmed {
+			t.Fatalf("%s: stored %q, response title %q, want %q", tc.name, stored, answered, tc.trimmed)
+		}
+	}
+}
+
+// A title that is nothing but whitespace trims down to the empty title. The
+// blank-title rule in validation.go refuses it before persistence, so the
+// delivered answer is the blank-title 400 and no note carrying an empty title
+// is ever stored; this task must not move that rule.
+func TestWhitespaceOnlyTitleTrimsToAnEmptyTitle(t *testing.T) {
+	for _, label := range []string{"   ", "\t\t", "\n", " \t\n ", "\u00a0\u2003"} {
+		store := &storingStore{}
+		// The trim, on its own terms: an all-spaces title has nothing left but
+		// the empty title, so that is the title the rule yields for it.
+		if trimmed := storageTitle(label); trimmed != "" {
+			t.Fatalf("title %q: trimmed title %q, want the empty title", label, trimmed)
+		}
+		body, err := json.Marshal(struct {
+			Label string `json:"label"`
+		}{Label: label})
+		if err != nil {
+			t.Fatalf("encode title %q: %v", label, err)
+		}
+		got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodPost, "/api/notes", string(body), goodToken)
+		if got.Code != http.StatusBadRequest || got.Body.String() != blankTitle {
+			t.Fatalf("title %q: got %d %q", label, got.Code, got.Body.String())
+		}
+		if store.calls != 0 {
+			t.Fatalf("title %q: trimmed-empty title reached persistence as %q", label, store.label)
+		}
+	}
+}
+
+// The trim lives at the persistence boundary rather than in one handler: every
+// note write reaches storage through storageTitle, so the title that is written
+// is trimmed at the edges only - by the create path today, and by an update path
+// whenever one joins it - whatever the caller handed over. The interior is never
+// rewritten, and a title that is nothing but whitespace reaches storage empty.
+func TestStorageTitleIsTheTrimEveryWritePathApplies(t *testing.T) {
+	cases := []struct{ name, submitted, stored string }{
+		{"leading only", "   hello", "hello"},
+		{"trailing only", "hello   ", "hello"},
+		{"leading and trailing", "   hello   ", "hello"},
+		{"nothing to cut", "hello world", "hello world"},
+		{"interior kept, edges cut", "  My  Note  Title  ", "My  Note  Title"},
+		{"tabs and newlines at the edges", "\t\nhello\r\n", "hello"},
+		{"whitespace only", " \t\n ", ""},
+	}
+	for _, tc := range cases {
+		if got := storageTitle(tc.submitted); got != tc.stored {
+			t.Fatalf("%s: title reaching storage %q, want %q", tc.name, got, tc.stored)
+		}
 	}
 }
 

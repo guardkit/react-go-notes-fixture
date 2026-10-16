@@ -1,0 +1,28 @@
+feature: notes-api-title-normalization
+generated: "2026-08-14T12:00:00Z"
+scenarios:
+  - title: "Creating a note with a leading-space title returns the trimmed title in the API response"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Creating a note whose title has spaces at the front returns the title with those front spaces removed."
+  - title: "Updating a note with a trailing-space title returns the trimmed title in the API response"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Editing a note to a title that has spaces at the end returns the title with those end spaces removed."
+  - title: "Interior spacing of a title is preserved in the API response when trimming"
+    tags: ["@key-example"]
+    sentence: "Returning the trimmed title removes only the spaces at the edges and leaves the spaces inside the title exactly as they were."
+  - title: "A title with no surrounding whitespace is returned unchanged in the API response"
+    tags: ["@boundary"]
+    sentence: "A title that already has no spaces at either end is returned exactly as it was given."
+  - title: "A title composed entirely of spaces is returned as an empty title in the API response"
+    tags: ["@boundary"]
+    sentence: "A title made up only of spaces is returned as an empty title."
+  - title: "Surrounding spaces are removed from a title before it is returned in the API response"
+    tags: ["@boundary"]
+    sentence: "Spaces at the start, the end, or both ends of a title are removed before the title is returned."
+assumptions:
+  - id: ASSUM-001
+    text: "The trim applies to both note creation and note update operations"
+    basis: "The request says 'before saving it' without naming a path; the proposal assumes both create and update trim, versus trimming only on creation"
+  - id: ASSUM-002
+    text: "The notes API is implemented in Go and has an existing create/update persistence path where a title trim can be applied before saving"
+    basis: "The request says 'Change only the Go API and its Go tests'; the proposal assumes an existing Go persistence path, versus titles being normalized elsewhere"
