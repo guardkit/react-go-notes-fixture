@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -33,6 +34,10 @@ func (s PGStore) Create(ctx context.Context, owner, label string) (note Note, er
 			err = errors.Join(err, fmt.Errorf("rollback note transaction: %w", rollbackErr))
 		}
 	}()
+	// The last step before the row is written: the title reaches storage without
+	// its surrounding whitespace, so the stored row - and the label this call
+	// reads back from RETURNING - can never carry it. Only the edges are cut.
+	label = strings.TrimSpace(label)
 	var id int64
 	if err := tx.QueryRow(queryCtx,
 		"INSERT INTO notes (owner_sub, label) VALUES ($1, $2) RETURNING id, label, created_at", owner, label,
