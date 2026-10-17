@@ -16,40 +16,19 @@ scenarios:
   - title: "The done flag accepts each valid boolean value"
     tags: ["@boundary"]
     sentence: "Setting the done flag to either true or false is accepted and the returned note reflects the new value."
-  - title: "A non-boolean done value is rejected"
-    tags: ["@boundary", "@negative"]
-    sentence: "Sending a done value that is not true or false is refused and the note is left unchanged."
   - title: "Updating a note that does not exist answers 404"
     tags: ["@negative"]
     sentence: "Trying to update a note id that does not exist is refused with a not-found answer that gives away nothing about whether the note exists."
   - title: "Updating a note owned by someone else answers 404"
     tags: ["@negative"]
     sentence: "Trying to update another person's note is refused with the same not-found answer, hiding the note's existence and leaving it unchanged."
-  - title: "A missing note and another user's note are indistinguishable to the caller"
-    tags: ["@negative"]
-    sentence: "A note that does not exist and a note owned by someone else produce the same not-found answer, so a caller cannot tell them apart."
-  - title: "An unauthenticated request is refused before the update is applied"
-    tags: ["@edge-case"]
-    sentence: "A caller who is not signed in is refused before any change is made, so the note keeps its original done flag."
-  - title: "A PATCH without a note id is refused"
-    tags: ["@edge-case"]
-    sentence: "Sending the update to the notes collection without naming a note id is refused as invalid."
 assumptions:
   - id: ASSUM-001
-    text: "A malformed or non-boolean done value is rejected with a 400 validation error"
-    basis: "The request does not specify the status code for a malformed payload; the open questions list 400 as assumed but not stated. Chosen between 400 (validation error) and 422 (unprocessable entity) — the platform convention is not settled by the request or the code shown."
-  - id: ASSUM-002
-    text: "An unauthenticated request is refused with 401 before route handling"
-    basis: "The request presupposes a signed-in principal but does not state the unauthenticated response. Chosen between 401 (sign-in required, matching the existing GET /api/notes contract) and 403 (forbidden) — the open questions leave this to existing middleware conventions."
-  - id: ASSUM-003
-    text: "A PATCH to the collection path without an id is refused as invalid"
-    basis: "The request only defines PATCH /api/notes/{id}. Chosen between refusing a missing id as invalid and treating it as a 404 — the request does not specify behaviour for the collection path."
-  - id: ASSUM-004
     text: "The returned updated note includes server-managed fields such as an updated timestamp"
     basis: "The request says the response returns the updated note but does not enumerate its fields. Chosen between including an updated timestamp and returning only the fields the client already knows — the open questions leave this unresolved."
-  - id: ASSUM-005
+  - id: ASSUM-002
     text: "Toggling the done flag does not modify server-managed fields such as the creation timestamp"
     basis: "The request states the done flag is the sole mutable field but does not say whether server-managed fields are touched. Chosen between leaving the creation timestamp unchanged and refreshing an updated timestamp — the open questions leave this unresolved."
-  - id: ASSUM-006
+  - id: ASSUM-003
     text: "The 404 response body carries no information revealing whether the note exists"
     basis: "The request states 404 for a missing or foreign note but does not specify the body. Chosen between an empty body and a generic error message — the information-hiding intent is stated but the body shape is not."

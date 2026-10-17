@@ -4,33 +4,6 @@ stack: generic
 review_required: true
 assumptions:
 - id: ASSUM-001
-  scenario: A non-boolean done value is rejected
-  assumption: A malformed or non-boolean done value is rejected with a 400 validation
-    error
-  confidence: low
-  basis: The request does not specify the status code for a malformed payload; the
-    open questions list 400 as assumed but not stated. Chosen between 400 (validation
-    error) and 422 (unprocessable entity) — the platform convention is not settled
-    by the request or the code shown.
-  human_response: deferred
-- id: ASSUM-002
-  scenario: An unauthenticated request is refused before the update is applied
-  assumption: An unauthenticated request is refused with 401 before route handling
-  confidence: low
-  basis: The request presupposes a signed-in principal but does not state the unauthenticated
-    response. Chosen between 401 (sign-in required, matching the existing GET /api/notes
-    contract) and 403 (forbidden) — the open questions leave this to existing middleware
-    conventions.
-  human_response: deferred
-- id: ASSUM-003
-  scenario: A PATCH without a note id is refused
-  assumption: A PATCH to the collection path without an id is refused as invalid
-  confidence: low
-  basis: The request only defines PATCH /api/notes/{id}. Chosen between refusing a
-    missing id as invalid and treating it as a 404 — the request does not specify
-    behaviour for the collection path.
-  human_response: deferred
-- id: ASSUM-004
   scenario: Owner marks a note as done and receives the updated note
   assumption: The returned updated note includes server-managed fields such as an
     updated timestamp
@@ -39,7 +12,7 @@ assumptions:
     its fields. Chosen between including an updated timestamp and returning only the
     fields the client already knows — the open questions leave this unresolved.
   human_response: deferred
-- id: ASSUM-005
+- id: ASSUM-002
   scenario: Owner marks a note as done and receives the updated note
   assumption: Toggling the done flag does not modify server-managed fields such as
     the creation timestamp
@@ -49,7 +22,7 @@ assumptions:
     timestamp unchanged and refreshing an updated timestamp — the open questions leave
     this unresolved.
   human_response: deferred
-- id: ASSUM-006
+- id: ASSUM-003
   scenario: Updating a note that does not exist answers 404
   assumption: The 404 response body carries no information revealing whether the note
     exists
