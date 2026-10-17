@@ -16,6 +16,19 @@ import (
 // explicit migrations in ../../migrations; the API never migrates on start.
 type PGStore struct{ Pool *pgxpool.Pool }
 
+// Note is one row of the notes table, and the note object the API answers with.
+// ID uses a decimal string because JavaScript numbers cannot safely hold all
+// BIGINT values. Done is the completion flag the 0003 migration adds: the column
+// is NOT NULL DEFAULT false, so every stored row carries a flag - including the
+// rows written before the column existed - and a listed note can never be
+// answered without it.
+type Note struct {
+	ID        string    `json:"id"`
+	Label     string    `json:"label"`
+	CreatedAt time.Time `json:"createdAt"`
+	Done      bool      `json:"done"`
+}
+
 // listLimit bounds one page of notes; the fixture has no paging.
 const listLimit = 100
 
@@ -48,9 +61,12 @@ func (s PGStore) Create(ctx context.Context, owner, label string) (note Note, er
 	// reads back from RETURNING - can never carry it. Only the edges are cut.
 	label = storageTitle(label)
 	var id int64
+	// The new row names no done column, so the column default writes it: every
+	// note this call creates starts not-done, and RETURNING reads that flag back
+	// rather than trusting the caller to have said so.
 	if err := tx.QueryRow(queryCtx,
-		"INSERT INTO notes (owner_sub, label) VALUES ($1, $2) RETURNING id, label, created_at", owner, label,
-	).Scan(&id, &note.Label, &note.CreatedAt); err != nil {
+		"INSERT INTO notes (owner_sub, label) VALUES ($1, $2) RETURNING id, label, created_at, done", owner, label,
+	).Scan(&id, &note.Label, &note.CreatedAt, &note.Done); err != nil {
 		return Note{}, fmt.Errorf("insert note: %w", err)
 	}
 	if err := tx.Commit(queryCtx); err != nil {
@@ -66,7 +82,7 @@ func (s PGStore) List(ctx context.Context, owner string) ([]Note, error) {
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	rows, err := s.Pool.Query(queryCtx,
-		"SELECT id, label, created_at FROM notes WHERE owner_sub = $1 ORDER BY created_at DESC, id DESC LIMIT $2",
+		"SELECT id, label, created_at, done FROM notes WHERE owner_sub = $1 ORDER BY created_at DESC, id DESC LIMIT $2",
 		owner, listLimit)
 	if err != nil {
 		return nil, fmt.Errorf("query notes: %w", err)
@@ -76,7 +92,7 @@ func (s PGStore) List(ctx context.Context, owner string) ([]Note, error) {
 	for rows.Next() {
 		var id int64
 		var note Note
-		if err := rows.Scan(&id, &note.Label, &note.CreatedAt); err != nil {
+		if err := rows.Scan(&id, &note.Label, &note.CreatedAt, &note.Done); err != nil {
 			return nil, fmt.Errorf("read note: %w", err)
 		}
 		note.ID = strconv.FormatInt(id, 10)

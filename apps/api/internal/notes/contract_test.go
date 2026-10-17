@@ -64,6 +64,10 @@ func TestImplementedResponsesMatchTheContract(t *testing.T) {
 	}{
 		{"health", http.MethodGet, "/api/health", "", "", &fakeStore{}, 200},
 		{"list", http.MethodGet, "/api/notes", "", goodToken, &fakeStore{list: []Note{note}}, 200},
+		// A stored done note is listed with its completion flag: the contract
+		// must accept the flag the endpoint answers with, beside the fields it
+		// already declared.
+		{"list done note", http.MethodGet, "/api/notes", "", goodToken, &fakeStore{list: []Note{note, {ID: "43", Label: "finished", CreatedAt: created, Done: true}}}, 200},
 		{"empty list", http.MethodGet, "/api/notes", "", goodToken, &fakeStore{}, 200},
 		{"list anonymous", http.MethodGet, "/api/notes", "", "", &fakeStore{}, 401},
 		{"list refused token", http.MethodGet, "/api/notes", "", "expired", &fakeStore{}, 401},
@@ -103,6 +107,10 @@ func TestContractRefusesForbiddenResponses(t *testing.T) {
 		{"numeric id", http.MethodPost, "/api/notes", 201, jsonHeader, `{"id":42,"label":"x","createdAt":"2026-10-12T09:30:00Z"}`},
 		{"undocumented field", http.MethodPost, "/api/notes", 201, jsonHeader, `{"id":"42","label":"x","createdAt":"2026-10-12T09:30:00Z","owner":"u"}`},
 		{"missing createdAt", http.MethodGet, "/api/notes", 200, jsonHeader, `{"notes":[{"id":"1","label":"x"}]}`},
+		// The done flag is a boolean or the listing is refused: a completion
+		// state the caller cannot read as true or false is not a flag.
+		{"null done", http.MethodGet, "/api/notes", 200, jsonHeader, `{"notes":[{"id":"1","label":"x","createdAt":"2026-10-12T09:30:00Z","done":null}]}`},
+		{"done is not a boolean", http.MethodGet, "/api/notes", 200, jsonHeader, `{"notes":[{"id":"1","label":"x","createdAt":"2026-10-12T09:30:00Z","done":"yes"}]}`},
 		{"bare array", http.MethodGet, "/api/notes", 200, jsonHeader, `[]`},
 		{"undocumented status", http.MethodGet, "/api/notes", 403, jsonHeader, `{"message":"no"}`},
 		{"401 without challenge", http.MethodGet, "/api/notes", 401, jsonHeader, `{"message":"Sign-in required"}`},

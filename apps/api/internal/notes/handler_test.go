@@ -4,8 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -195,7 +204,7 @@ func TestCreatePreservesContextOwnerAndWireShape(t *testing.T) {
 	r = r.WithContext(context.WithValue(r.Context(), contextKey{}, "trace"))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
-	want := "{\"id\":\"9007199254740993\",\"label\":\"hello\",\"createdAt\":\"2026-10-12T09:30:00Z\"}\n"
+	want := "{\"id\":\"9007199254740993\",\"label\":\"hello\",\"createdAt\":\"2026-10-12T09:30:00Z\",\"done\":false}\n"
 	if w.Code != http.StatusCreated || w.Body.String() != want {
 		t.Fatalf("got %d %q", w.Code, w.Body.String())
 	}
@@ -377,7 +386,7 @@ func TestStorageTitleIsTheTrimEveryWritePathApplies(t *testing.T) {
 func TestListIsScopedToTheSignedInOwner(t *testing.T) {
 	store := &fakeStore{list: []Note{{ID: "2", Label: "second", CreatedAt: created}}}
 	got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodGet, "/api/notes", "", goodToken)
-	want := "{\"notes\":[{\"id\":\"2\",\"label\":\"second\",\"createdAt\":\"2026-10-12T09:30:00Z\"}]}\n"
+	want := "{\"notes\":[{\"id\":\"2\",\"label\":\"second\",\"createdAt\":\"2026-10-12T09:30:00Z\",\"done\":false}]}\n"
 	if got.Code != http.StatusOK || got.Body.String() != want || store.owner != "user-1" {
 		t.Fatalf("got %d %q owner %q", got.Code, got.Body.String(), store.owner)
 	}
@@ -437,4 +446,345 @@ func TestMethodsAndHealth(t *testing.T) {
 	if got := request(h, http.MethodGet, "/api/missing", "", goodToken); got.Code != http.StatusNotFound {
 		t.Fatalf("missing: %d", got.Code)
 	}
+}
+
+// listingNotes decodes the notes array of a GET /api/notes body as raw JSON
+// objects: a decoded struct cannot tell an omitted field from a zero value, so
+// the done-flag checks ask the body itself whether the flag is there.
+func listingNotes(t *testing.T, body []byte) []map[string]any {
+	t.Helper()
+	var envelope struct {
+		Notes []map[string]any `json:"notes"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		t.Fatalf("decode listing %q: %v", body, err)
+	}
+	return envelope.Notes
+}
+
+// listedNotes asks the real listing route for the signed-in owner's notes
+// exactly as the store holds them, and answers with each note as the caller
+// receives it, beside the owner the store was asked for.
+func listedNotes(t *testing.T, stored []Note) ([]map[string]any, string) {
+	t.Helper()
+	store := &fakeStore{list: stored}
+	got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodGet, "/api/notes", "", goodToken)
+	if got.Code != http.StatusOK {
+		t.Fatalf("GET /api/notes: got %d %q", got.Code, got.Body.String())
+	}
+	notes := listingNotes(t, got.Body.Bytes())
+	if len(notes) != len(stored) {
+		t.Fatalf("listing carries %d notes, want %d: %q", len(notes), len(stored), got.Body.String())
+	}
+	return notes, store.owner
+}
+
+// doneFlag answers with the done flag one listed note carries, refusing a
+// listing that omits the flag, nulls it, or answers with anything but a JSON
+// boolean.
+func doneFlag(t *testing.T, note map[string]any, id string) bool {
+	t.Helper()
+	raw, found := note["done"]
+	if !found {
+		t.Fatalf("note %s: the listing omits the done flag: %v", id, note)
+	}
+	if raw == nil {
+		t.Fatalf("note %s: the done flag is null", id)
+	}
+	flag, ok := raw.(bool)
+	if !ok {
+		t.Fatalf("note %s: the done flag %v is not a JSON boolean", id, raw)
+	}
+	return flag
+}
+
+// The fields the listing already carried stay where they were: the done flag is
+// added to each note beside its id, label and creation time, and nothing is
+// renamed or dropped on the way.
+func assertCarriesTheExistingFields(t *testing.T, note map[string]any, want Note) {
+	t.Helper()
+	if note["id"] != want.ID || note["label"] != want.Label {
+		t.Fatalf("note %s: id/label became %v/%v, want %q/%q", want.ID, note["id"], note["label"], want.ID, want.Label)
+	}
+	if got := note["createdAt"]; got != want.CreatedAt.UTC().Format(time.RFC3339) {
+		t.Fatalf("note %s: createdAt became %v, want %q", want.ID, got, want.CreatedAt.UTC().Format(time.RFC3339))
+	}
+}
+
+// A note written before the done column existed is stored with the migration's
+// false default, and the listing hands that flag over: the row is observable
+// only through GET /api/notes (ASSUM-004), so the column default is pinned here
+// rather than by reading storage.
+func TestListingReturnsNotDoneForANoteStoredBeforeTheDoneFlag(t *testing.T) {
+	// The zero Done value is the row the 0003 migration backfills: the column
+	// default wrote false, so it carries no completion.
+	before := Note{ID: "1", Label: "before the flag", CreatedAt: created}
+	notes, owner := listedNotes(t, []Note{before})
+	if owner != "user-1" {
+		t.Fatalf("listing scoped to owner %q, want user-1", owner)
+	}
+	if doneFlag(t, notes[0], before.ID) {
+		t.Fatal("a note stored before the done flag existed is listed as done")
+	}
+	assertCarriesTheExistingFields(t, notes[0], before)
+}
+
+// A note whose stored completion state is done is listed with done true. The
+// state is seeded as stored state: this slice has no caller-facing write path
+// that sets it (ASSUM-003).
+func TestListingReturnsTheDoneFlagForADoneNote(t *testing.T) {
+	finished := Note{ID: "7", Label: "finished", CreatedAt: created, Done: true}
+	notes, _ := listedNotes(t, []Note{finished})
+	if !doneFlag(t, notes[0], finished.ID) {
+		t.Fatal("a note stored as done is listed as not done")
+	}
+	assertCarriesTheExistingFields(t, notes[0], finished)
+}
+
+// Every note of a mixed listing carries its own flag: the completion state of
+// one note never leaks into another, no note is left without a flag, and the
+// listing still answers the signed-in owner's notes newest-first.
+func TestEveryNoteInTheListingCarriesItsOwnDoneFlag(t *testing.T) {
+	stored := []Note{
+		{ID: "4", Label: "fourth", CreatedAt: created.Add(time.Minute), Done: true},
+		{ID: "3", Label: "third", CreatedAt: created, Done: false},
+		{ID: "2", Label: "second", CreatedAt: created.Add(-time.Minute), Done: true},
+		{ID: "1", Label: "first", CreatedAt: created.Add(-2 * time.Minute), Done: false},
+	}
+	notes, owner := listedNotes(t, stored)
+	if owner != "user-1" {
+		t.Fatalf("listing scoped to owner %q, want user-1", owner)
+	}
+	for i, note := range notes {
+		want := stored[i]
+		if got := doneFlag(t, note, want.ID); got != want.Done {
+			t.Fatalf("note %s: done flag %v, want %v", want.ID, got, want.Done)
+		}
+		assertCarriesTheExistingFields(t, note, want)
+	}
+	if notes[0]["id"] != "4" || notes[3]["id"] != "1" {
+		t.Fatalf("listing no longer answers newest-first: %v", notes)
+	}
+}
+
+// noteShapeTypes names every type handler.go may use to shape one note of the
+// listing. A type the route starts naming that is not listed here fails the
+// check below, so the each-note proof cannot quietly stop covering the surface.
+var noteShapeTypes = map[string]reflect.Type{
+	"Note": reflect.TypeOf(Note{}),
+}
+
+// listingMemberTypeNames parses handler.go - the file that serves the listing -
+// and answers with the note types its GET /api/notes route names to shape each
+// note of the response. The set is discovered when the test runs.
+func listingMemberTypeNames(t *testing.T) []string {
+	t.Helper()
+	src, err := os.ReadFile("handler.go")
+	if err != nil {
+		t.Fatalf("read the listing handler: %v", err)
+	}
+	file, err := parser.ParseFile(token.NewFileSet(), "handler.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse the listing handler: %v", err)
+	}
+	builtins := map[string]bool{"any": true, "bool": true, "byte": true, "error": true, "int": true, "int64": true, "rune": true, "string": true}
+	names := map[string]bool{}
+	var collect func(ast.Expr)
+	collect = func(expr ast.Expr) {
+		switch e := expr.(type) {
+		case *ast.ArrayType:
+			collect(e.Elt)
+		case *ast.StarExpr:
+			collect(e.X)
+		case *ast.MapType:
+			collect(e.Value)
+		case *ast.StructType:
+			for _, field := range e.Fields.List {
+				collect(field.Type)
+			}
+		case *ast.Ident:
+			if !builtins[e.Name] {
+				names[e.Name] = true
+			}
+		}
+	}
+	ast.Inspect(file, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok || len(call.Args) < 2 {
+			return true
+		}
+		route, ok := call.Args[0].(*ast.BasicLit)
+		if !ok || route.Kind != token.STRING {
+			return true
+		}
+		if spec, err := strconv.Unquote(route.Value); err != nil || spec != "GET /api/notes" {
+			return true
+		}
+		ast.Inspect(call.Args[1], func(inner ast.Node) bool {
+			switch e := inner.(type) {
+			case *ast.StructType:
+				for _, field := range e.Fields.List {
+					collect(field.Type)
+				}
+			case *ast.ArrayType:
+				collect(e.Elt)
+			}
+			return true
+		})
+		return true
+	})
+	members := make([]string, 0, len(names))
+	for name := range names {
+		members = append(members, name)
+	}
+	sort.Strings(members)
+	return members
+}
+
+// One check covers "each note": it discovers the members of the each-note set
+// from handler.go when it runs, refuses a set it finds empty or a member it does
+// not cover, and then demands of every member that a listed note can never be
+// answered without its completion flag - a boolean named done that encoding can
+// never leave out.
+func TestEachNoteListingMemberCarriesTheDoneFlag(t *testing.T) {
+	members := listingMemberTypeNames(t)
+	if len(members) == 0 {
+		t.Fatal("the each-note set is empty: handler.go shapes the listing without naming a note type")
+	}
+	for _, member := range members {
+		noteType, ok := noteShapeTypes[member]
+		if !ok {
+			t.Fatalf("handler.go shapes each listed note with %q, which the done-flag check does not cover", member)
+		}
+		field, ok := noteType.FieldByName("Done")
+		if !ok {
+			t.Fatalf("type %q has no Done field, so a listed note can be answered without a completion flag", member)
+		}
+		if field.Type.Kind() != reflect.Bool {
+			t.Fatalf("type %q carries Done as %s, want a boolean", member, field.Type.Kind())
+		}
+		name, options, _ := strings.Cut(field.Tag.Get("json"), ",")
+		if name != "done" {
+			t.Fatalf("type %q encodes Done as %q, want the done flag", member, name)
+		}
+		if strings.Contains(options, "omitempty") {
+			t.Fatalf("type %q may omit the done flag: json tag %q", member, field.Tag.Get("json"))
+		}
+	}
+	// The members the set discovered are the ones the listing really answers
+	// with, so the flag is proven on the wire as well as on the type.
+	stored := []Note{
+		{ID: "2", Label: "done", CreatedAt: created, Done: true},
+		{ID: "1", Label: "not done", CreatedAt: created.Add(-time.Minute)},
+	}
+	notes, _ := listedNotes(t, stored)
+	for i, note := range notes {
+		if got := doneFlag(t, note, stored[i].ID); got != stored[i].Done {
+			t.Fatalf("note %s of the members' listing: done flag %v, want %v", stored[i].ID, got, stored[i].Done)
+		}
+	}
+}
+
+// listingShapeMembers is every file of the repository that declares or reads the
+// shape of one listed note, with the check that covers it. mustCarryDone marks
+// the members that declare the fields themselves, as opposed to the members
+// whose done-carrying is proven through the type they name or through the check
+// named beside them.
+var listingShapeMembers = map[string]struct {
+	coveredBy     string
+	mustCarryDone bool
+}{
+	"apps/api/internal/notes/handler.go": {coveredBy: "TestEachNoteListingMemberCarriesTheDoneFlag and the listing wire-shape assertions above"},
+	"apps/api/internal/notes/store.go":   {coveredBy: "scripts/check-feature.sh, which lists notes read back from PostgreSQL", mustCarryDone: true},
+	"contract/openapi.yaml":              {coveredBy: "TestImplementedResponsesMatchTheContract in contract_test.go", mustCarryDone: true},
+	"apps/web/src/api-types.ts":          {coveredBy: "npm run contract:check on the types regenerated from the contract", mustCarryDone: true},
+	"apps/web/src/api.ts":                {coveredBy: "apps/web/src/api.test.ts, the web reader of a listed note"},
+}
+
+// The each-note sweep discovers the response-shaping members itself when it
+// runs, over the whole repository: a member the checks above do not cover is a
+// failure, a declared member the sweep cannot find is a failure, and a sweep
+// that finds nothing is a failure rather than a silent pass.
+func TestListingShapeMembersAreAllCoveredByACheck(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..")
+	skipDirs := map[string]bool{".claude": true, ".git": true, ".guardkit": true, "coverage": true, "dist": true, "node_modules": true, "playwright-report": true, "test-results": true}
+	sources := map[string]bool{".go": true, ".ts": true, ".tsx": true, ".yaml": true, ".yml": true}
+	found := map[string]bool{}
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		name := entry.Name()
+		if entry.IsDir() {
+			if skipDirs[name] {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !sources[filepath.Ext(name)] || strings.HasSuffix(name, "_test.go") ||
+			strings.HasSuffix(name, ".test.ts") || strings.HasSuffix(name, ".test.tsx") ||
+			strings.HasSuffix(name, ".spec.ts") {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		text := string(data)
+		// A file shapes a listed note when it names the fields one note is
+		// answered with, or when it registers the route that answers them.
+		if (!namesAnyField(text, "createdAt", "CreatedAt", "created_at") ||
+			!namesAnyField(text, "label", "Label") || !namesAnyField(text, "id", "ID")) &&
+			!servesTheListingRoute(text) {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		found[filepath.ToSlash(rel)] = true
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("sweep the repository for files shaping a listed note: %v", err)
+	}
+	if len(found) == 0 {
+		t.Fatal("the sweep found no member of the each-note set")
+	}
+	for member := range found {
+		if _, ok := listingShapeMembers[member]; !ok {
+			t.Fatalf("%s shapes a listed note but no check covers it", member)
+		}
+	}
+	for member, cover := range listingShapeMembers {
+		if !found[member] {
+			t.Fatalf("%s is declared as a member of the each-note set but the sweep did not find it (covered by %s)", member, cover.coveredBy)
+		}
+		if !cover.mustCarryDone {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(member)))
+		if err != nil {
+			t.Fatalf("read %s: %v", member, err)
+		}
+		if !strings.Contains(string(data), "done") {
+			t.Fatalf("%s shapes a listed note but never carries the done flag", member)
+		}
+	}
+}
+
+// servesTheListingRoute reports the file that registers the listing the whole
+// each-note set is read from, whether or not it names the fields itself.
+func servesTheListingRoute(text string) bool {
+	return strings.Contains(text, `"GET /api/notes"`)
+}
+
+// namesAnyField reports whether text spells one field under any of its names.
+func namesAnyField(text string, names ...string) bool {
+	for _, name := range names {
+		if strings.Contains(text, name) {
+			return true
+		}
+	}
+	return false
 }

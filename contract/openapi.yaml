@@ -120,6 +120,11 @@ components:
         createdAt:
           type: string
           format: date-time
+        # The completion flag the 0003 migration adds. The endpoint answers
+        # with it for every note; TASK-4C9B-002 declares it required once the
+        # web readers are ready for it.
+        done:
+          type: boolean
     NoteList:
       type: object
       additionalProperties: false

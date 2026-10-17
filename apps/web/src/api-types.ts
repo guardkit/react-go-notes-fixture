@@ -52,6 +52,7 @@ export interface components {
         Note: {
             /** Format: date-time */
             createdAt: string;
+            done?: boolean;
             id: string;
             label: string;
         };
