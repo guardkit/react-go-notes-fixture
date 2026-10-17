@@ -1,0 +1,44 @@
+id: FEAT-7C34
+name: "PATCH /api/notes/{id} sets the done flag for the signed-in owner"
+description: "Add PATCH /api/notes/{id} so the signed-in owner can set a note's done flag to true or false; it returns the updated note, and answers 404 for a note that does not exist or belongs to someone else"
+created: "2026-10-20T00:00:00Z"
+status: planned
+complexity: 5
+estimated_tasks: 2
+feature_files:
+  - features/patch-api-notes-id-sets-the-done-flag-for-the-signed-in-owner/patch-api-notes-id-sets-the-done-flag-for-the-signed-in-owner.feature
+
+tasks:
+  - id: TASK-7C34-001
+    name: "Add the PATCH /api/notes/{id} done-flag route with the owner-scoped update"
+    file_path: "tasks/backlog/patch-notes-done-flag/TASK-7C34-001-add-patch-notes-done-route.md"
+    complexity: 7
+    dependencies: []
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 90
+
+  - id: TASK-7C34-002
+    name: "Wire the done-flag toggle into the web client"
+    file_path: "tasks/backlog/patch-notes-done-flag/TASK-7C34-002-wire-done-toggle-in-web.md"
+    complexity: 6
+    dependencies:
+      - TASK-7C34-001
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 60
+
+orchestration:
+  parallel_groups:
+    - - TASK-7C34-001
+    - - TASK-7C34-002
+  estimated_duration_minutes: 150
+  recommended_parallel: 1
+
+scenario_owners:
+  "Owner marks a note as done and receives the updated note": TASK-7C34-001
+  "Owner re-opens a completed note and receives the updated note": TASK-7C34-001
+  "Updating the done flag leaves the note's other fields unchanged": TASK-7C34-001
+  "The done flag accepts each valid boolean value": TASK-7C34-001
+  "Updating a note that does not exist answers 404": TASK-7C34-001
+  "Updating a note owned by someone else answers 404": TASK-7C34-001

@@ -1,0 +1,34 @@
+feature: patch-api-notes-id-sets-the-done-flag-for-the-signed-in-owner
+generated: "2026-07-09T14:32:00Z"
+endpoint:
+  method: PATCH
+  path: /api/notes/{id}
+scenarios:
+  - title: "Owner marks a note as done and receives the updated note"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A signed-in owner completing their own note gets back that same note now marked done."
+  - title: "Owner re-opens a completed note and receives the updated note"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A signed-in owner re-opening their own completed note gets back that same note now marked not done."
+  - title: "Updating the done flag leaves the note's other fields unchanged"
+    tags: ["@key-example"]
+    sentence: "Changing only the done flag leaves the note's label and other details exactly as they were."
+  - title: "The done flag accepts each valid boolean value"
+    tags: ["@boundary"]
+    sentence: "Setting the done flag to either true or false is accepted and the returned note reflects the new value."
+  - title: "Updating a note that does not exist answers 404"
+    tags: ["@negative"]
+    sentence: "Trying to update a note id that does not exist is refused with a not-found answer."
+  - title: "Updating a note owned by someone else answers 404"
+    tags: ["@negative"]
+    sentence: "Trying to update another person's note is refused with the same not-found answer."
+assumptions:
+  - id: ASSUM-001
+    text: "The returned updated note includes server-managed fields such as an updated timestamp"
+    basis: "The request says the response returns the updated note but does not enumerate its fields. Chosen between including an updated timestamp and returning only the fields the client already knows — the open questions leave this unresolved."
+  - id: ASSUM-002
+    text: "Toggling the done flag does not modify server-managed fields such as the creation timestamp"
+    basis: "The request states the done flag is the sole mutable field but does not say whether server-managed fields are touched. Chosen between leaving the creation timestamp unchanged and refreshing an updated timestamp — the open questions leave this unresolved."
+  - id: ASSUM-003
+    text: "The 404 response body carries no information revealing whether the note exists"
+    basis: "The request states 404 for a missing or foreign note but does not specify the body. Chosen between an empty body and a generic error message — the information-hiding intent is stated but the body shape is not."

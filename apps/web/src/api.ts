@@ -1,9 +1,18 @@
-import type { components } from "./api-types";
+import type { components, operations } from "./api-types";
 
 // Types come from contract/openapi.yaml through the generated api-types.ts;
 // the parsers below still check every response at runtime.
 export type Note = components["schemas"]["Note"];
 type NewNote = components["schemas"]["NewNote"];
+
+// The PATCH /api/notes/{id} operation's own request and response shapes, read
+// off the generated contract types so the client cannot drift from the
+// contract without failing to typecheck.
+type UpdateNoteDone = operations["updateNoteDone"];
+type NoteId = UpdateNoteDone["parameters"]["path"]["id"];
+type DoneUpdate = UpdateNoteDone["requestBody"]["content"]["application/json"];
+type UpdatedNote =
+  UpdateNoteDone["responses"][200]["content"]["application/json"];
 
 type Fetcher = (
   input: RequestInfo | URL,
@@ -13,6 +22,15 @@ type Fetcher = (
 export class SignInRequiredError extends Error {
   constructor() {
     super("Sign-in required");
+  }
+}
+
+// The single-note route answers 404 for a note that was never written and for
+// one owned by someone else alike, so the only thing the client can say is
+// that the note the person was looking at is no longer theirs to see.
+export class NoteGoneError extends Error {
+  constructor() {
+    super("Note not found");
   }
 }
 
@@ -66,6 +84,10 @@ async function call(
   headers.set("authorization", `Bearer ${token}`);
   const response = await fetcher(path, { ...init, headers });
   if (response.status === 401) throw new SignInRequiredError();
+  // Only the single-note route answers 404 in the contract, and it means the
+  // note is not the caller's to touch: said apart from a service failure so
+  // the view never leaves the flag it last showed standing.
+  if (response.status === 404) throw new NoteGoneError();
   if (!response.ok) throw new Error("The notes service is unavailable");
   return (await response.json()) as unknown;
 }
@@ -89,6 +111,30 @@ export async function createNote(
       token,
       {
         method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      fetcher,
+    ),
+  );
+}
+
+export async function updateNoteDone(
+  id: NoteId,
+  done: boolean,
+  token: string,
+  fetcher: Fetcher = fetch,
+): Promise<UpdatedNote> {
+  // The id goes into the path, so it is held to the contract's own pattern
+  // before a request is ever shaped with it.
+  if (!/^[0-9]+$/.test(id)) throw new Error("Invalid note id");
+  const body: DoneUpdate = { done };
+  return parseNote(
+    await call(
+      `/api/notes/${id}`,
+      token,
+      {
+        method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       },

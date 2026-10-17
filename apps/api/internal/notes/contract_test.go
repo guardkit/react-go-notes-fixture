@@ -86,6 +86,17 @@ func TestImplementedResponsesMatchTheContract(t *testing.T) {
 		{"create title too long", http.MethodPost, "/api/notes", `{"label":"` + strings.Repeat("x", maxLabelChars+1) + `"}`, goodToken, &fakeStore{}, 400},
 		{"create anonymous", http.MethodPost, "/api/notes", `{"label":"x"}`, "", &fakeStore{}, 401},
 		{"create failure", http.MethodPost, "/api/notes", `{"label":"x"}`, goodToken, &fakeStore{err: errors.New("down")}, 500},
+		// The update answers with the note the owner now has: the flag the
+		// caller set beside the id, label and creation time it already carried.
+		{"patch done", http.MethodPatch, "/api/notes/42", `{"done":true}`, goodToken, &fakeStore{updated: Note{ID: "42", Label: "Buy groceries", CreatedAt: created, Done: true}}, 200},
+		{"patch reopened", http.MethodPatch, "/api/notes/42", `{"done":false}`, goodToken, &fakeStore{updated: Note{ID: "42", Label: "Buy groceries", CreatedAt: created}}, 200},
+		// A note the owner does not have - never written, or owned by someone
+		// else - is the same answer, and both are in the contract.
+		{"patch missing note", http.MethodPatch, "/api/notes/42", `{"done":true}`, goodToken, &fakeStore{updateErr: ErrNoteNotFound}, 404},
+		{"patch foreign note", http.MethodPatch, "/api/notes/9", `{"done":true}`, goodToken, &fakeStore{updateErr: ErrNoteNotFound}, 404},
+		{"patch anonymous", http.MethodPatch, "/api/notes/42", `{"done":true}`, "", &fakeStore{}, 401},
+		{"patch refused token", http.MethodPatch, "/api/notes/42", `{"done":true}`, "expired", &fakeStore{}, 401},
+		{"patch failure", http.MethodPatch, "/api/notes/42", `{"done":true}`, goodToken, &fakeStore{updateErr: errors.New("down")}, 500},
 	}
 	for _, tc := range cases {
 		got := request(Routes(tc.store, fakeAuth{}, "run-1"), tc.method, tc.path, tc.body, tc.token)
@@ -126,6 +137,18 @@ func TestContractRefusesForbiddenResponses(t *testing.T) {
 		{"401 without challenge", http.MethodGet, "/api/notes", 401, jsonHeader, `{"message":"Sign-in required"}`},
 		{"health without run", http.MethodGet, "/api/health", 200, jsonHeader, `{"status":"ok"}`},
 		{"wrong body on 401", http.MethodGet, "/api/notes", 401, challenge, `{"error":"x"}`},
+		// The same rules bite on the note the update answers with: the flag is
+		// still a required boolean, no field besides the four the Note schema
+		// declares is allowed, and the not-found answer is still an Error.
+		{"patch numeric id", http.MethodPatch, "/api/notes/42", 200, jsonHeader, `{"id":42,"label":"x","createdAt":"2026-10-12T09:30:00Z","done":true}`},
+		{"patch undocumented field", http.MethodPatch, "/api/notes/42", 200, jsonHeader, `{"id":"42","label":"x","createdAt":"2026-10-12T09:30:00Z","done":true,"owner":"u"}`},
+		{"patch missing done", http.MethodPatch, "/api/notes/42", 200, jsonHeader, `{"id":"42","label":"x","createdAt":"2026-10-12T09:30:00Z"}`},
+		{"patch null done", http.MethodPatch, "/api/notes/42", 200, jsonHeader, `{"id":"42","label":"x","createdAt":"2026-10-12T09:30:00Z","done":null}`},
+		{"patch done is not a boolean", http.MethodPatch, "/api/notes/42", 200, jsonHeader, `{"id":"42","label":"x","createdAt":"2026-10-12T09:30:00Z","done":"yes"}`},
+		{"patch undocumented status", http.MethodPatch, "/api/notes/42", 403, jsonHeader, `{"message":"no"}`},
+		{"patch 401 without challenge", http.MethodPatch, "/api/notes/42", 401, jsonHeader, `{"message":"Sign-in required"}`},
+		{"patch 404 without a message", http.MethodPatch, "/api/notes/42", 404, jsonHeader, `{}`},
+		{"patch 404 naming the owner", http.MethodPatch, "/api/notes/42", 404, jsonHeader, `{"message":"not your note","owner":"u"}`},
 	}
 	for _, tc := range cases {
 		r := httptest.NewRequest(tc.method, tc.path, nil)
@@ -150,6 +173,29 @@ func TestContractDoneRefusalsNameTheFlag(t *testing.T) {
 		err := checkResponse(router, r, 200, jsonHeader, []byte(tc.body))
 		if err == nil {
 			t.Fatalf("%s: contract accepted a forbidden response", tc.name)
+		}
+		if !strings.Contains(err.Error(), "done") {
+			t.Fatalf("%s: refusal does not name the flag: %v", tc.name, err)
+		}
+	}
+}
+
+// The update route answers with the very same note object, so the required
+// boolean bites there too: each refusal below is refused for the done property
+// of the note PATCH /api/notes/{id} answers with, not for an unrelated rule.
+func TestContractDoneRefusalsNameTheFlagOnTheUpdateRoute(t *testing.T) {
+	router := contractRouter(t)
+	jsonHeader := http.Header{"Content-Type": []string{"application/json"}}
+	cases := []struct{ name, body string }{
+		{"missing done", `{"id":"42","label":"x","createdAt":"2026-10-12T09:30:00Z"}`},
+		{"null done", `{"id":"42","label":"x","createdAt":"2026-10-12T09:30:00Z","done":null}`},
+		{"done is not a boolean", `{"id":"42","label":"x","createdAt":"2026-10-12T09:30:00Z","done":"yes"}`},
+	}
+	for _, tc := range cases {
+		r := httptest.NewRequest(http.MethodPatch, "/api/notes/42", nil)
+		err := checkResponse(router, r, 200, jsonHeader, []byte(tc.body))
+		if err == nil {
+			t.Fatalf("%s: contract accepted a forbidden update response", tc.name)
 		}
 		if !strings.Contains(err.Error(), "done") {
 			t.Fatalf("%s: refusal does not name the flag: %v", tc.name, err)

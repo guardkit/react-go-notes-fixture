@@ -1,0 +1,28 @@
+format_version: '2.0'
+task_id: TASK-7C34-001
+registered_at:
+  sha: 5155afb7b9b35b1639a0c65bb861da0733580da3
+  date: '2026-10-17'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: patch-api-notes-id-sets-the-done-flag-for-the-signed-in-owner-AC-001
+  text: Owner marks a note as done and receives the updated note
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: patch-api-notes-id-sets-the-done-flag-for-the-signed-in-owner-AC-002
+  text: Owner re-opens a completed note and receives the updated note
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: patch-api-notes-id-sets-the-done-flag-for-the-signed-in-owner-AC-003
+  text: Updating the done flag leaves the note's other fields unchanged
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation

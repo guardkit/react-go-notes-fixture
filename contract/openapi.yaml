@@ -61,6 +61,48 @@ paths:
           $ref: "#/components/responses/SignInRequired"
         "500":
           $ref: "#/components/responses/Unavailable"
+  /api/notes/{id}:
+    patch:
+      operationId: updateNoteDone
+      description: >-
+        The signed-in owner sets the done flag of one of their own notes. The
+        flag is the sole mutable field: the note comes back with every other
+        field exactly as it was stored.
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The id of the note, which must belong to the token's `sub`.
+          schema:
+            type: string
+            pattern: "^[0-9]+$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoneUpdate"
+      responses:
+        "200":
+          description: The updated note, carrying the flag the owner just set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "400":
+          description: The body is not a JSON object carrying only a boolean done.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/SignInRequired"
+        "404":
+          $ref: "#/components/responses/NoteNotFound"
+        "500":
+          $ref: "#/components/responses/Unavailable"
 components:
   securitySchemes:
     bearer:
@@ -85,6 +127,15 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    NoteNotFound:
+      description: >-
+        No note of the signed-in owner carries this id. The very same answer is
+        given for a note that was never written and for one owned by someone
+        else, so it discloses neither (ASSUM-003).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     Health:
       type: object
@@ -105,6 +156,18 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+    # The whole body of a note update: the completion flag, and nothing else.
+    # The flag is required and not nullable, so an absent, null or non-boolean
+    # value is refused - a completion state the server cannot read as true or
+    # false is not a flag - and additionalProperties false keeps the flag the
+    # sole field a client may set.
+    DoneUpdate:
+      type: object
+      additionalProperties: false
+      required: [done]
+      properties:
+        done:
+          type: boolean
     Note:
       type: object
       additionalProperties: false

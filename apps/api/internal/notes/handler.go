@@ -18,6 +18,7 @@ import (
 type Store interface {
 	Create(ctx context.Context, owner, label string) (Note, error)
 	List(ctx context.Context, owner string) ([]Note, error)
+	UpdateDone(ctx context.Context, owner, id string, done bool) (Note, error)
 }
 
 // Authenticator turns a bearer token into the owner's subject, or refuses it.
@@ -74,6 +75,41 @@ func Routes(store Store, authn Authenticator, runID string) http.Handler {
 		}
 		writeJSON(w, http.StatusCreated, note)
 	}))
+	// The signed-in owner completes or re-opens one of their own notes. The
+	// done flag is the one field a caller may set, so the note comes back with
+	// its id, label and creation time exactly as they were stored (ASSUM-002),
+	// in the same note shape the listing answers with.
+	mux.Handle("PATCH /api/notes/{id}", signedIn(authn, func(w http.ResponseWriter, r *http.Request, owner string) {
+		done, err := decodeDone(w, r)
+		if err != nil {
+			// A flag that is absent, null or not a boolean answers with the
+			// message naming the flag; every other failure stays
+			// "Invalid request".
+			if errors.Is(err, errDoneMissing) || errors.Is(err, errDoneNotBoolean) {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			writeError(w, http.StatusBadRequest, "Invalid request")
+			return
+		}
+		// The owner is the token's subject and the id is the path's: neither is
+		// ever read out of the body, so a caller cannot name whose note it
+		// updates. The store scopes the write to both.
+		note, err := store.UpdateDone(r.Context(), owner, r.PathValue("id"), done)
+		if err != nil {
+			// One call answers both a note that was never written and a note
+			// owned by someone else, so the two are byte-identical and the
+			// answer discloses neither (ASSUM-003).
+			if errors.Is(err, ErrNoteNotFound) {
+				writeError(w, http.StatusNotFound, "Note not found")
+				return
+			}
+			slog.ErrorContext(r.Context(), "update note failed")
+			writeError(w, http.StatusInternalServerError, "Service unavailable")
+			return
+		}
+		writeJSON(w, http.StatusOK, note)
+	}))
 	return mux
 }
 
@@ -98,21 +134,33 @@ func signedIn(authn Authenticator, next func(http.ResponseWriter, *http.Request,
 	})
 }
 
-func decodeLabel(w http.ResponseWriter, r *http.Request) (string, error) {
+// jsonBody reads a request body under the guard every note write shares: the
+// media type must be JSON, the body must fit the size limit, must be valid
+// UTF-8, and must be a single JSON object. Nothing looks at a field before
+// these hold.
+func jsonBody(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" {
-		return "", errInvalidLabel
+		return nil, errInvalidBody
 	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1024))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if !utf8.Valid(body) {
-		return "", errInvalidLabel
+		return nil, errInvalidBody
 	}
 	trimmed := bytes.TrimSpace(body)
 	if len(trimmed) == 0 || trimmed[0] != '{' {
-		return "", errInvalidLabel
+		return nil, errInvalidBody
+	}
+	return trimmed, nil
+}
+
+func decodeLabel(w http.ResponseWriter, r *http.Request) (string, error) {
+	trimmed, err := jsonBody(w, r)
+	if err != nil {
+		return "", err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(trimmed))
 	decoder.DisallowUnknownFields()
@@ -124,9 +172,34 @@ func decodeLabel(w http.ResponseWriter, r *http.Request) (string, error) {
 	}
 	var trailing any
 	if err := decoder.Decode(&trailing); err != io.EOF {
-		return "", errInvalidLabel
+		return "", errInvalidBody
 	}
 	return ValidateLabel(input.Label)
+}
+
+// decodeDone reads the one field a note update may carry. The flag is decoded
+// as the raw JSON value the caller sent, so an absent flag, a null flag and a
+// flag of some other type stay three distinguishable refusals rather than one
+// decode failure; DisallowUnknownFields keeps the flag the sole field a client
+// may set, so a body that also tries to write the label is refused outright.
+func decodeDone(w http.ResponseWriter, r *http.Request) (bool, error) {
+	trimmed, err := jsonBody(w, r)
+	if err != nil {
+		return false, err
+	}
+	decoder := json.NewDecoder(bytes.NewReader(trimmed))
+	decoder.DisallowUnknownFields()
+	var input struct {
+		Done *json.RawMessage `json:"done"`
+	}
+	if err := decoder.Decode(&input); err != nil {
+		return false, errInvalidBody
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return false, errInvalidBody
+	}
+	return ValidateDone(input.Done)
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {

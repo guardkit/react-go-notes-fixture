@@ -34,10 +34,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description The signed-in owner sets the done flag of one of their own notes. The flag is the sole mutable field: the note comes back with every other field exactly as it was stored. */
+        patch: operations["updateNoteDone"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        DoneUpdate: {
+            done: boolean;
+        };
         Error: {
             message: string;
         };
@@ -61,6 +81,15 @@ export interface components {
         };
     };
     responses: {
+        /** @description No note of the signed-in owner carries this id. The very same answer is given for a note that was never written and for one owned by someone else, so it discloses neither (ASSUM-003). */
+        NoteNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
         /** @description No token, or a token that is expired, unsigned, for another audience or from an unaccepted issuer. */
         SignInRequired: {
             headers: {
@@ -162,6 +191,45 @@ export interface operations {
                 };
             };
             401: components["responses"]["SignInRequired"];
+            500: components["responses"]["Unavailable"];
+        };
+    };
+    updateNoteDone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The id of the note, which must belong to the token's `sub`. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DoneUpdate"];
+            };
+        };
+        responses: {
+            /** @description The updated note, carrying the flag the owner just set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
+                };
+            };
+            /** @description The body is not a JSON object carrying only a boolean done. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["SignInRequired"];
+            404: components["responses"]["NoteNotFound"];
             500: components["responses"]["Unavailable"];
         };
     };

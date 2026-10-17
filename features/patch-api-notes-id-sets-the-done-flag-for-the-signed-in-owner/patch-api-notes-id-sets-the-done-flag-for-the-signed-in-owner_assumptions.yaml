@@ -1,0 +1,33 @@
+feature: PATCH /api/notes/{id} sets the done flag for the signed-in owner
+generated: '2026-07-09T14:32:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: Owner marks a note as done and receives the updated note
+  assumption: The returned updated note includes server-managed fields such as an
+    updated timestamp
+  confidence: low
+  basis: The request says the response returns the updated note but does not enumerate
+    its fields. Chosen between including an updated timestamp and returning only the
+    fields the client already knows — the open questions leave this unresolved.
+  human_response: deferred
+- id: ASSUM-002
+  scenario: Owner marks a note as done and receives the updated note
+  assumption: Toggling the done flag does not modify server-managed fields such as
+    the creation timestamp
+  confidence: low
+  basis: The request states the done flag is the sole mutable field but does not say
+    whether server-managed fields are touched. Chosen between leaving the creation
+    timestamp unchanged and refreshing an updated timestamp — the open questions leave
+    this unresolved.
+  human_response: deferred
+- id: ASSUM-003
+  scenario: Updating a note that does not exist answers 404
+  assumption: The 404 response body carries no information revealing whether the note
+    exists
+  confidence: low
+  basis: The request states 404 for a missing or foreign note but does not specify
+    the body. Chosen between an empty body and a generic error message — the information-hiding
+    intent is stated but the body shape is not.
+  human_response: deferred
