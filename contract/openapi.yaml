@@ -108,7 +108,7 @@ components:
     Note:
       type: object
       additionalProperties: false
-      required: [id, label, createdAt]
+      required: [id, label, createdAt, done]
       properties:
         id:
           type: string
@@ -120,6 +120,13 @@ components:
         createdAt:
           type: string
           format: date-time
+        # The completion flag the 0003 migration adds. The column is NOT NULL
+        # DEFAULT false, so every stored row - including the rows written before
+        # the column existed - carries a flag, and the endpoint answers with it
+        # for every note. The contract therefore demands it: a note object
+        # without a boolean done is not a note.
+        done:
+          type: boolean
     NoteList:
       type: object
       additionalProperties: false

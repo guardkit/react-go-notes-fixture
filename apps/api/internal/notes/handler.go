@@ -10,16 +10,8 @@ import (
 	"mime"
 	"net/http"
 	"strings"
-	"time"
 	"unicode/utf8"
 )
-
-// Note uses a decimal string because JavaScript numbers cannot safely hold all BIGINT values.
-type Note struct {
-	ID        string    `json:"id"`
-	Label     string    `json:"label"`
-	CreatedAt time.Time `json:"createdAt"`
-}
 
 // Store is owned by the HTTP consumer; the PostgreSQL adapter implements it.
 // Every call is scoped to the signed-in owner (the token's `sub`).
@@ -43,6 +35,8 @@ func Routes(store Store, authn Authenticator, runID string) http.Handler {
 			Run    string `json:"run"`
 		}{Status: "ok", Run: runID})
 	})
+	// The signed-in owner's notes, newest first, each answered with its own
+	// done flag beside its id, label and creation time.
 	mux.Handle("GET /api/notes", signedIn(authn, func(w http.ResponseWriter, r *http.Request, owner string) {
 		list, err := store.List(r.Context(), owner)
 		if err != nil {

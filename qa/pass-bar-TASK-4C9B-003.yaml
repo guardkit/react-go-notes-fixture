@@ -1,0 +1,38 @@
+format_version: '2.0'
+task_id: TASK-4C9B-003
+registered_at:
+  sha: 8551d36511860f0020db2247d9115e5d7f29c714
+  date: '2026-10-17'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-done-flag-AC-001
+  text: Migration adds the done column defaulting to not-done
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-002
+  text: Listing notes returns the done flag for a not-done note
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-003
+  text: Listing notes returns the done flag for a done note
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-004
+  text: The done flag is always present and never null in the listing
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-005
+  text: Adding the done flag does not remove existing note fields
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation

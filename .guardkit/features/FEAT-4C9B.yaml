@@ -1,0 +1,106 @@
+id: FEAT-4C9B
+name: "Notes Done Flag"
+description: "Add a boolean done flag to notes: a new migration adds a done column defaulting to false, GET /api/notes returns each note's done flag, and the OpenAPI contract and generated web types are updated to match."
+created: "2026-10-18T09:00:00Z"
+status: planned
+complexity: 5
+estimated_tasks: 3
+feature_files:
+  - features/notes-done-flag/notes-done-flag.feature
+
+tasks:
+  - id: TASK-4C9B-001
+    name: "Add the done column migration and expose done through the store and API response"
+    file_path: "tasks/backlog/notes-done-flag/TASK-4C9B-001-migration-store-and-api-done-flag.md"
+    complexity: 5
+    dependencies: []
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 90
+
+  - id: TASK-4C9B-002
+    name: "Declare the done flag in the OpenAPI contract"
+    file_path: "tasks/backlog/notes-done-flag/TASK-4C9B-002-contract-declares-done-flag.md"
+    complexity: 3
+    dependencies:
+      - TASK-4C9B-001
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 45
+
+  - id: TASK-4C9B-003
+    name: "Regenerate the web types from the updated contract"
+    file_path: "tasks/backlog/notes-done-flag/TASK-4C9B-003-regenerate-web-types.md"
+    complexity: 3
+    dependencies:
+      - TASK-4C9B-002
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 30
+
+orchestration:
+  parallel_groups:
+    - - TASK-4C9B-001
+    - - TASK-4C9B-002
+    - - TASK-4C9B-003
+  estimated_duration_minutes: 165
+  recommended_parallel: 1
+
+scenario_owners:
+  "Migration adds the done column defaulting to not-done": TASK-4C9B-001
+  "Listing notes returns the done flag for a not-done note": TASK-4C9B-001
+  "Listing notes returns the done flag for a done note": TASK-4C9B-001
+  "The done flag is always present and never null in the listing": TASK-4C9B-001
+  "Adding the done flag does not remove existing note fields": TASK-4C9B-001
+  "Existing notes are backfilled to not-done by the migration": TASK-4C9B-001
+  "The contract declares the done flag matching the implemented response": TASK-4C9B-002
+  "Regenerated web types carry the done flag": TASK-4C9B-003
+  "Regenerated web types type-check against existing web consumers": TASK-4C9B-003
+  "A note object without a done flag is not accepted by the contract": TASK-4C9B-002
+  "A note object with a null done flag is not accepted by the contract": TASK-4C9B-002
+  "Contract validation fails when the response drifts from the contract": TASK-4C9B-002
+  "A listing of many notes returns each note's own done flag": TASK-4C9B-001
+  "The persistence mapping exposes the done flag to the application layer": TASK-4C9B-001
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Migration adds the done column defaulting to not-done":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Listing notes returns the done flag for a not-done note":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Listing notes returns the done flag for a done note":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The done flag is always present and never null in the listing":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Adding the done flag does not remove existing note fields":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Existing notes are backfilled to not-done by the migration":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The contract declares the done flag matching the implemented response":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Regenerated web types carry the done flag":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Regenerated web types type-check against existing web consumers":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note object without a done flag is not accepted by the contract":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note object with a null done flag is not accepted by the contract":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Contract validation fails when the response drifts from the contract":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A listing of many notes returns each note's own done flag":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The persistence mapping exposes the done flag to the application layer":
+    verifier: "probe:process"

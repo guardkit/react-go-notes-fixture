@@ -1,0 +1,61 @@
+feature: notes-done-flag
+generated: "2026-07-09T14:32:00Z"
+endpoint:
+  method: GET
+  path: /api/notes
+scenarios:
+  - title: "Migration adds the done column defaulting to not-done"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A note that existed before the done flag was added comes back in the listing with its done flag set to false."
+  - title: "Listing notes returns the done flag for a not-done note"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Asking for the notes listing returns a not-done note with its done flag set to false."
+  - title: "Listing notes returns the done flag for a done note"
+    tags: ["@key-example"]
+    sentence: "Asking for the notes listing returns a done note with its done flag set to true."
+  - title: "The done flag is always present and never null in the listing"
+    tags: ["@key-example"]
+    sentence: "Every note in the listing carries a done flag, and that flag is never left blank."
+  - title: "Adding the done flag does not remove existing note fields"
+    tags: ["@key-example"]
+    sentence: "Each note in the listing still shows its id, label, and creation time now that the done flag has been added."
+  - title: "Existing notes are backfilled to not-done by the migration"
+    tags: ["@boundary"]
+    sentence: "Notes created before the done flag existed each come back in the listing with their done flag set to false."
+  - title: "The contract declares the done flag matching the implemented response"
+    tags: ["@boundary"]
+    sentence: "A note returned in the listing satisfies the contract's required true-or-false done field."
+  - title: "Regenerated web types carry the done flag"
+    tags: ["@boundary"]
+    sentence: "Web code that reads the notes listing can see each note's completion state as a done value."
+  - title: "Regenerated web types type-check against existing web consumers"
+    tags: ["@boundary"]
+    sentence: "Existing web code reading the listing receives a done flag for each note it expects."
+  - title: "A note object without a done flag is not accepted by the contract"
+    tags: ["@negative"]
+    sentence: "A note in the listing that leaves out the done flag makes the listing fail the contract check."
+  - title: "A note object with a null done flag is not accepted by the contract"
+    tags: ["@negative"]
+    sentence: "A note in the listing whose done flag is blank makes the listing fail the contract check."
+  - title: "Contract validation fails when the response drifts from the contract"
+    tags: ["@negative"]
+    sentence: "If the live listing stops returning the done flag, it fails the check against the contract."
+  - title: "A listing of many notes returns each note's own done flag"
+    tags: ["@edge-case"]
+    sentence: "When the listing holds many notes in mixed states, each note comes back with its own correct done flag."
+  - title: "The persistence mapping exposes the done flag to the application layer"
+    tags: ["@edge-case"]
+    sentence: "A note stored on the server is returned in the listing with its completion state exposed as a done value."
+assumptions:
+  - id: ASSUM-001
+    text: "The contract is a machine-readable OpenAPI schema in which the note object declares done as a required boolean property"
+    basis: "The request says 'the contract' without naming its format; chose OpenAPI (required boolean) over a non-machine-readable or optional-property schema"
+  - id: ASSUM-002
+    text: "The web types are generated from the contract by the existing codegen step (npm run contract:generate) and committed, rather than hand-edited"
+    basis: "The request says 'generated web types updated to match' without stating the regeneration mechanism; chose codegen-from-contract over hand-editing generated files"
+  - id: ASSUM-003
+    text: "This slice is read-only: setting done to true is out of scope because the request mentions only the migration, the GET response, the contract, and the generated types"
+    basis: "The request names no write path; chose read-only (no toggle/PATCH endpoint) over including a companion write path to set done"
+  - id: ASSUM-004
+    text: "A note created before the done flag existed can be observed only through GET /api/notes, because the supplied interface exposes no storage inspection; the column-default behaviour is pinned via the listing rather than via a storage probe"
+    basis: "The request and context name only the migration, the GET response, the contract, and the generated types; chose pinning through the listing over asserting the migration run, the storage engine, the down step, or the ORM mapping, none of which are in the supplied interface"
