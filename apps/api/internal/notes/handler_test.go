@@ -30,6 +30,16 @@ type fakeStore struct {
 	note  Note
 	list  []Note
 	err   error
+
+	// The update path is recorded apart from the two reads, so a test can tell
+	// which call the handler made and with what.
+	updateCalls int
+	updateCtx   context.Context
+	updateOwner string
+	updateID    string
+	updateDone  bool
+	updated     Note
+	updateErr   error
 }
 
 func (f *fakeStore) Create(ctx context.Context, owner, label string) (Note, error) {
@@ -42,6 +52,16 @@ func (f *fakeStore) List(ctx context.Context, owner string) ([]Note, error) {
 	f.calls++
 	f.ctx, f.owner = ctx, owner
 	return f.list, f.err
+}
+
+// UpdateDone records the owner, id and flag the handler handed over and answers
+// with the note stored under updated, exactly as the adapter reads the updated
+// row back. Set updateErr to ErrNoteNotFound for the note the owner does not
+// have, or to any other error for a persistence failure.
+func (f *fakeStore) UpdateDone(ctx context.Context, owner, id string, done bool) (Note, error) {
+	f.updateCalls++
+	f.updateCtx, f.updateOwner, f.updateID, f.updateDone = ctx, owner, id, done
+	return f.updated, f.updateErr
 }
 
 // fakeAuth accepts exactly goodToken as subject "user-1"; real token checks
@@ -234,6 +254,14 @@ func (s *storingStore) Create(_ context.Context, owner, label string) (Note, err
 
 func (s *storingStore) List(context.Context, string) ([]Note, error) { return []Note{}, nil }
 
+// UpdateDone answers with the row the adapter reads back from its own
+// UPDATE ... RETURNING: the title and creation time the row already held, and
+// the flag the caller set. The update path writes no title, so the title it
+// reports is the title storage already carried.
+func (s *storingStore) UpdateDone(_ context.Context, _, id string, done bool) (Note, error) {
+	return Note{ID: id, Label: s.label, CreatedAt: created, Done: done}, nil
+}
+
 // createTitle asks the real create handler to store one title, and reports the
 // title the store was handed and the title the response carried.
 func createTitle(t *testing.T, store *storingStore, label string) (stored, answered string) {
@@ -304,11 +332,11 @@ func TestCreateTrimsSurroundingWhitespaceFromTheTitle(t *testing.T) {
 // An update answers with the trimmed title as well: the trim lives at the
 // persistence boundary (storageTitle, the last step before the row is written),
 // so a replacement title loses its surrounding whitespace on the way in, and the
-// note response carries the title that was written. The delivered surface has one
-// note write - contract/openapi.yaml documents only GET and POST /api/notes, and
-// notes.Store declares only Create and List - so the update case is pinned at the
-// two steps an update is made of, the shared write-boundary trim and the note
-// response, both of which keep their bite when an update handler joins them.
+// note response carries the title that was written. The note write the API now
+// answers besides the create - PATCH /api/notes/{id} - sets the done flag alone
+// and never a title, so this rule still bites at the two steps an update is made
+// of: the shared write-boundary trim every note title goes through, and the note
+// response, which carries the title storage already held.
 func TestUpdateTrimsSurroundingWhitespaceFromTheReplacementTitle(t *testing.T) {
 	cases := []struct{ name, replacement, trimmed string }{
 		{"trailing spaces", "hello   ", "hello"},
