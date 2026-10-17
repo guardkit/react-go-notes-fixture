@@ -3,6 +3,7 @@ package notes
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -215,4 +216,61 @@ func TestContractNoteObjectDeclaresTheDoneFlag(t *testing.T) {
 	if notes.Value.Items.Value != note {
 		t.Error("the notes listing's items are not the Note schema")
 	}
+}
+
+// The drift the contract exists to catch is the live response moving away from
+// the declared shape, so this starts from what the handler actually answers and
+// removes only the flag: the untouched listing is accepted, the same listing
+// without the flag is refused. A required boolean that nothing outside the
+// hand-written tables bites on would not catch it.
+func TestContractRefusesTheLiveListingOnceTheDoneFlagDriftsAway(t *testing.T) {
+	router := contractRouter(t)
+	store := &fakeStore{list: []Note{
+		{ID: "42", Label: "hello", CreatedAt: created},
+		{ID: "43", Label: "finished", CreatedAt: created, Done: true},
+	}}
+	got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodGet, "/api/notes", "", goodToken)
+	if got.Code != http.StatusOK {
+		t.Fatalf("live listing status %d, want 200", got.Code)
+	}
+	if err := checkResponse(router, liveRequest(), got.Code, got.Header(), got.Body.Bytes()); err != nil {
+		t.Fatalf("the live listing breaks the contract: %v", err)
+	}
+	drifted := withoutDoneFlag(t, got.Body.Bytes())
+	if err := checkResponse(router, liveRequest(), got.Code, got.Header(), drifted); err == nil {
+		t.Fatal("contract accepted a live listing that dropped the done flag")
+	}
+}
+
+func liveRequest() *http.Request {
+	return httptest.NewRequest(http.MethodGet, "/api/notes", nil)
+}
+
+// withoutDoneFlag returns the listing body with every note's done key removed,
+// leaving the fields the contract already demanded untouched.
+func withoutDoneFlag(t *testing.T, body []byte) []byte {
+	t.Helper()
+	var doc map[string]any
+	if err := json.Unmarshal(body, &doc); err != nil {
+		t.Fatalf("live listing is not JSON: %v", err)
+	}
+	notes, ok := doc["notes"].([]any)
+	if !ok || len(notes) == 0 {
+		t.Fatalf("live listing carries no notes array: %s", body)
+	}
+	for _, entry := range notes {
+		note, ok := entry.(map[string]any)
+		if !ok {
+			t.Fatalf("listing entry is not an object: %v", entry)
+		}
+		if _, ok := note["done"]; !ok {
+			t.Fatalf("the live listing already omits the done flag: %s", body)
+		}
+		delete(note, "done")
+	}
+	encoded, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("encode drifted listing: %v", err)
+	}
+	return encoded
 }
