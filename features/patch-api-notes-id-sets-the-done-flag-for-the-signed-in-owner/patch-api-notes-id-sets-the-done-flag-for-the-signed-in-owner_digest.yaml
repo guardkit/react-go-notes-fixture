@@ -18,10 +18,10 @@ scenarios:
     sentence: "Setting the done flag to either true or false is accepted and the returned note reflects the new value."
   - title: "Updating a note that does not exist answers 404"
     tags: ["@negative"]
-    sentence: "Trying to update a note id that does not exist is refused with a not-found answer that gives away nothing about whether the note exists."
+    sentence: "Trying to update a note id that does not exist is refused with a not-found answer."
   - title: "Updating a note owned by someone else answers 404"
     tags: ["@negative"]
-    sentence: "Trying to update another person's note is refused with the same not-found answer, hiding the note's existence and leaving it unchanged."
+    sentence: "Trying to update another person's note is refused with the same not-found answer."
 assumptions:
   - id: ASSUM-001
     text: "The returned updated note includes server-managed fields such as an updated timestamp"

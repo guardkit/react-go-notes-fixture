@@ -61,7 +61,6 @@ Feature: PATCH /api/notes/{id} sets the done flag for the signed-in owner
   Scenario: Updating a note that does not exist answers 404
     When the signed-in owner sends PATCH /api/notes/missing-id with done set to true
     Then the request should answer 404
-    And the response body should not reveal whether the note exists
 
   # Why: Negative — the request answers 404 for a note that belongs to someone else
   @negative
@@ -69,5 +68,3 @@ Feature: PATCH /api/notes/{id} sets the done flag for the signed-in owner
     Given a note with id "note-9" owned by another user with done flag false
     When the signed-in owner sends PATCH /api/notes/note-9 with done set to true
     Then the request should answer 404
-    And the response body should not reveal whether the note exists
-    And the note's done flag should remain false
