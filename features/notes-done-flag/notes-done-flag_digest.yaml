@@ -6,7 +6,7 @@ endpoint:
 scenarios:
   - title: "Migration adds the done column defaulting to not-done"
     tags: ["@key-example", "@smoke"]
-    sentence: "Applying the new migration gives every note a done flag that starts out as not-done."
+    sentence: "A note that existed before the done flag was added comes back in the listing with its done flag set to false."
   - title: "Listing notes returns the done flag for a not-done note"
     tags: ["@key-example", "@smoke"]
     sentence: "Asking for the notes listing returns a not-done note with its done flag set to false."
@@ -18,44 +18,44 @@ scenarios:
     sentence: "Every note in the listing carries a done flag, and that flag is never left blank."
   - title: "Adding the done flag does not remove existing note fields"
     tags: ["@key-example"]
-    sentence: "The listing still returns each note's original fields even now that the done flag has been added."
+    sentence: "Each note in the listing still shows its id, label, and creation time now that the done flag has been added."
   - title: "Existing notes are backfilled to not-done by the migration"
     tags: ["@boundary"]
-    sentence: "Notes created before the done flag existed are set to not-done when the migration runs."
+    sentence: "Notes created before the done flag existed each come back in the listing with their done flag set to false."
   - title: "The contract declares the done flag matching the implemented response"
     tags: ["@boundary"]
-    sentence: "The contract describes the done flag as a required true-or-false value that agrees with what the API actually returns."
+    sentence: "A note returned in the listing satisfies the contract's required true-or-false done field."
   - title: "Regenerated web types carry the done flag"
     tags: ["@boundary"]
-    sentence: "Regenerating the web types from the contract gives the web note type a done true-or-false property."
+    sentence: "Web code that reads the notes listing can see each note's completion state as a done value."
   - title: "Regenerated web types type-check against existing web consumers"
     tags: ["@boundary"]
-    sentence: "The regenerated web types still work with the existing web code that reads the notes listing."
+    sentence: "Existing web code reading the listing receives a done flag for each note it expects."
   - title: "A note object without a done flag is not accepted by the contract"
     tags: ["@negative"]
-    sentence: "A note in the listing that leaves out the done flag is rejected by the contract."
+    sentence: "A note in the listing that leaves out the done flag makes the listing fail the contract check."
   - title: "A note object with a null done flag is not accepted by the contract"
     tags: ["@negative"]
-    sentence: "A note in the listing whose done flag is blank is rejected by the contract."
+    sentence: "A note in the listing whose done flag is blank makes the listing fail the contract check."
   - title: "Contract validation fails when the response drifts from the contract"
     tags: ["@negative"]
-    sentence: "If the live listing stops returning the done flag, the contract check against it fails."
+    sentence: "If the live listing stops returning the done flag, it fails the check against the contract."
   - title: "A listing of many notes returns each note's own done flag"
     tags: ["@edge-case"]
     sentence: "When the listing holds many notes in mixed states, each note comes back with its own correct done flag."
   - title: "The persistence mapping exposes the done flag to the application layer"
     tags: ["@edge-case"]
-    sentence: "After the migration, the application can read a note's done flag as a true-or-false value from storage."
+    sentence: "A note stored on the server is returned in the listing with its completion state exposed as a done value."
 assumptions:
   - id: ASSUM-001
-    text: "The done column is a non-nullable boolean with a server-side false default, so existing rows are backfilled to false by the column default rather than by a separate backfill step"
-    basis: "The request says 'false by default' but not how existing rows are backfilled; chose non-nullable-with-default (single-step add) over nullable-add-then-backfill-then-set-not-null"
-  - id: ASSUM-002
     text: "The contract is a machine-readable OpenAPI schema in which the note object declares done as a required boolean property"
     basis: "The request says 'the contract' without naming its format; chose OpenAPI (required boolean) over a non-machine-readable or optional-property schema"
-  - id: ASSUM-003
+  - id: ASSUM-002
     text: "The web types are generated from the contract by the existing codegen step (npm run contract:generate) and committed, rather than hand-edited"
     basis: "The request says 'generated web types updated to match' without stating the regeneration mechanism; chose codegen-from-contract over hand-editing generated files"
-  - id: ASSUM-004
+  - id: ASSUM-003
     text: "This slice is read-only: setting done to true is out of scope because the request mentions only the migration, the GET response, the contract, and the generated types"
     basis: "The request names no write path; chose read-only (no toggle/PATCH endpoint) over including a companion write path to set done"
+  - id: ASSUM-004
+    text: "A note created before the done flag existed can be observed only through GET /api/notes, because the supplied interface exposes no storage inspection; the column-default behaviour is pinned via the listing rather than via a storage probe"
+    basis: "The request and context name only the migration, the GET response, the contract, and the generated types; chose pinning through the listing over asserting the migration run, the storage engine, the down step, or the ORM mapping, none of which are in the supplied interface"

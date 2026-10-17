@@ -4,15 +4,6 @@ stack: generic
 review_required: true
 assumptions:
 - id: ASSUM-001
-  scenario: Migration adds the done column defaulting to not-done
-  assumption: The done column is a non-nullable boolean with a server-side false default,
-    so existing rows are backfilled to false by the column default rather than by
-    a separate backfill step
-  confidence: low
-  basis: The request says 'false by default' but not how existing rows are backfilled;
-    chose non-nullable-with-default (single-step add) over nullable-add-then-backfill-then-set-not-null
-  human_response: deferred
-- id: ASSUM-002
   scenario: The contract declares the done flag matching the implemented response
   assumption: The contract is a machine-readable OpenAPI schema in which the note
     object declares done as a required boolean property
@@ -20,7 +11,7 @@ assumptions:
   basis: The request says 'the contract' without naming its format; chose OpenAPI
     (required boolean) over a non-machine-readable or optional-property schema
   human_response: deferred
-- id: ASSUM-003
+- id: ASSUM-002
   scenario: Regenerated web types carry the done flag
   assumption: The web types are generated from the contract by the existing codegen
     step (npm run contract:generate) and committed, rather than hand-edited
@@ -29,7 +20,7 @@ assumptions:
     regeneration mechanism; chose codegen-from-contract over hand-editing generated
     files
   human_response: deferred
-- id: ASSUM-004
+- id: ASSUM-003
   scenario: Listing notes returns the done flag for a done note
   assumption: 'This slice is read-only: setting done to true is out of scope because
     the request mentions only the migration, the GET response, the contract, and the
@@ -37,4 +28,16 @@ assumptions:
   confidence: low
   basis: The request names no write path; chose read-only (no toggle/PATCH endpoint)
     over including a companion write path to set done
+  human_response: deferred
+- id: ASSUM-004
+  scenario: Migration adds the done column defaulting to not-done
+  assumption: A note created before the done flag existed can be observed only through
+    GET /api/notes, because the supplied interface exposes no storage inspection;
+    the column-default behaviour is pinned via the listing rather than via a storage
+    probe
+  confidence: low
+  basis: The request and context name only the migration, the GET response, the contract,
+    and the generated types; chose pinning through the listing over asserting the
+    migration run, the storage engine, the down step, or the ORM mapping, none of
+    which are in the supplied interface
   human_response: deferred

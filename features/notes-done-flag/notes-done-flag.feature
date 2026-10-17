@@ -14,14 +14,14 @@ Feature: Notes Done Flag
     Given I am signed in with a valid access token
     And the notes service is available
 
-  # Why: request — "a new migration adds a done column that is false by default"; the core persistence behaviour
-  # [ASSUMPTION: confidence=low] The done column is a non-nullable boolean with a server-side false default, so existing rows are backfilled to false by the column default rather than by a sepa
+  # Why: request — "a new migration adds a done column that is false by default"; the observable consequence through the API surface
+  # [ASSUMPTION: confidence=low] A note created before the done flag existed can be observed only through GET /api/notes, because the supplied interface exposes no storage inspection; the colum
   @key-example @smoke
   Scenario: Migration adds the done column defaulting to not-done
-    Given the notes table exists without a done column
-    When the new migration is applied
-    Then every note should carry a done flag
-    And each note's done flag should be false by default
+    Given I have a note created before the done flag existed
+    When I request GET /api/notes
+    Then my note should carry a done flag
+    And my note's done flag should be false
 
   # Why: request — "GET /api/notes returns each note's done flag"; the core read path for a not-done note
   @key-example @smoke
@@ -32,10 +32,10 @@ Feature: Notes Done Flag
     And that note's done flag should be false
 
   # Why: request — "GET /api/notes returns each note's done flag"; the read path for a done note
-  # [ASSUMPTION: confidence=low] This slice is read-only: setting done to true is out of scope because the request mentions only the migration, the GET response, the contract, and the generated
+  # [ASSUMPTION: confidence=low] A done note exists as stored state to be listed: setting done to true has no caller-facing interface in this slice
   @key-example
   Scenario: Listing notes returns the done flag for a done note
-    Given I have a note that is done
+    Given I have a note whose completion state is done
     When I request GET /api/notes
     Then the response should include my note
     And that note's done flag should be true
@@ -43,7 +43,7 @@ Feature: Notes Done Flag
   # Why: FEAT-PO-002 — "the field is always present in each note object and is never omitted or null"
   @key-example
   Scenario: The done flag is always present and never null in the listing
-    Given I have notes in both done and not-done states
+    Given I have notes whose completion states are done and not-done
     When I request GET /api/notes
     Then every note in the response should carry a done flag
     And no note's done flag should be null
@@ -51,73 +51,73 @@ Feature: Notes Done Flag
   # Why: FEAT-PO-002 — "Response shape changes are additive only — no existing fields are renamed or removed"
   @key-example
   Scenario: Adding the done flag does not remove existing note fields
-    Given I have a note with its existing fields
+    Given I have a note with an id, a label, and a creation time
     When I request GET /api/notes
-    Then the response should include my note's existing fields
-    And the response should also include the done flag
+    Then my note should still carry its id, label, and creation time
+    And my note should also carry the done flag
 
-  # Why: FEAT-PO-001 — "Existing note rows are backfilled to false by the column default"
+  # Why: FEAT-PO-001 — "Existing note rows are backfilled to false by the column default"; observed through the listing that callers see
   @boundary
   Scenario: Existing notes are backfilled to not-done by the migration
-    Given notes already exist that were created before the done flag existed
-    When the new migration is applied
-    Then each pre-existing note's done flag should be false
+    Given I have notes created before the done flag existed
+    When I request GET /api/notes
+    Then each of those pre-existing notes should be returned with a done flag of false
 
   # Why: FEAT-PO-003 — "the schema's done property type, requiredness, and default must agree with what the endpoint actually returns"
   # [ASSUMPTION: confidence=low] The contract is a machine-readable OpenAPI schema in which the note object declares done as a required boolean property
   @boundary
   Scenario: The contract declares the done flag matching the implemented response
-    Given the notes API returns the done flag for each note
-    When the API contract is inspected
-    Then the note object should declare a required boolean done property that matches the done flag the API returns
+    Given I request GET /api/notes and receive a note in the response
+    When the listing response is checked against the contract's declared note fields
+    Then the note object in the response should satisfy the contract's required boolean done field
 
   # Why: FEAT-PO-004 — "the frontend Note type carries a done boolean property"
-  # [ASSUMPTION: confidence=low] The web types are generated from the contract by the existing codegen step (npm run contract:generate) and committed, rather than hand-edited
+  # [ASSUMPTION: confidence=low] The web types are generated from the contract by the existing codegen step and committed, rather than hand-edited
   @boundary
   Scenario: Regenerated web types carry the done flag
-    Given the API contract declares the done flag
-    When the web types are regenerated from the contract
-    Then the web Note type should carry a done boolean property
+    Given web code reads the notes listing from GET /api/notes
+    When the web code reads a listed note's completion state
+    Then the completion state should be available to the web code as a done value
 
   # Why: FEAT-PO-004 — "the regenerated types type-check against existing web code that consumes GET /api/notes responses"
   @boundary
   Scenario: Regenerated web types type-check against existing web consumers
-    Given the web types have been regenerated from the contract
-    When the existing web code that consumes the notes listing is type-checked
-    Then the type check should pass
+    Given web code reads the notes listing from GET /api/notes
+    When that existing web code reads each note's done flag
+    Then the listing response it receives should carry the done flag it expects
 
   # Why: FEAT-PO-002 — "the field is always present in each note object and is never omitted or null"; negative case for a missing flag
   @negative
   Scenario: A note object without a done flag is not accepted by the contract
-    Given a note object in the listing response omits the done flag
-    When the response is validated against the contract
-    Then the validation should fail
+    Given a listing response is produced for GET /api/notes
+    When a note object in the listing response omits the done flag
+    Then the response should fail the contract check for the notes listing
 
   # Why: FEAT-PO-002 — "the field is always present in each note object and is never omitted or null"; negative case for a null flag
   @negative
   Scenario: A note object with a null done flag is not accepted by the contract
-    Given a note object in the listing response has a null done flag
-    When the response is validated against the contract
-    Then the validation should fail
+    Given a listing response is produced for GET /api/notes
+    When a note object in the listing response has a null done flag
+    Then the response should fail the contract check for the notes listing
 
   # Why: FEAT-PO-003 — "contract validation tests pass against the live response"; drift between contract and implementation
   @negative
   Scenario: Contract validation fails when the response drifts from the contract
-    Given the notes API response omits the done flag
-    When the contract validation runs against the live response
-    Then the contract validation should fail
+    Given the notes API at GET /api/notes responds without the done flag
+    When the live response is checked against the contract's declared note fields
+    Then the live response should fail the contract check for the notes listing
 
   # Why: FEAT-PO-002 — "alongside the note's existing fields"; multi-note listing pins per-note flags
   @edge-case
   Scenario: A listing of many notes returns each note's own done flag
-    Given I have several notes with mixed done and not-done states
+    Given I have several notes whose completion states are a mix of done and not-done
     When I request GET /api/notes
     Then each note in the response should carry its own done flag
     And the flags should match each note's completion state
 
-  # Why: FEAT-PO-001 — "the notes ORM model (or equivalent persistence mapping) exposes done as a boolean field available to the application layer"
+  # Why: FEAT-PO-001 — "the persistence mapping exposes done as a boolean field available to the application layer"; observed as the flag the API hands to callers
   @edge-case
   Scenario: The persistence mapping exposes the done flag to the application layer
-    Given the new migration has been applied
-    When the application reads a note through the persistence mapping
-    Then the note should expose done as a boolean field
+    Given I have a note whose completion state is stored on the server
+    When I request GET /api/notes
+    Then my note should be returned with its completion state exposed as a done value
