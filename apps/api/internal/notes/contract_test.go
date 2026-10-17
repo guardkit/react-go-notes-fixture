@@ -20,7 +20,7 @@ import (
 // The contract is the source file the web types are generated from.
 var contractPath = filepath.Join("..", "..", "..", "..", "contract", "openapi.yaml")
 
-func contractRouter(t *testing.T) routers.Router {
+func contractDoc(t *testing.T) *openapi3.T {
 	t.Helper()
 	loader := openapi3.NewLoader()
 	doc, err := loader.LoadFromFile(contractPath)
@@ -30,7 +30,12 @@ func contractRouter(t *testing.T) routers.Router {
 	if err := doc.Validate(context.Background()); err != nil {
 		t.Fatalf("contract is not valid OpenAPI: %v", err)
 	}
-	router, err := legacy.NewRouter(doc)
+	return doc
+}
+
+func contractRouter(t *testing.T) routers.Router {
+	t.Helper()
+	router, err := legacy.NewRouter(contractDoc(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,8 +112,12 @@ func TestContractRefusesForbiddenResponses(t *testing.T) {
 		{"numeric id", http.MethodPost, "/api/notes", 201, jsonHeader, `{"id":42,"label":"x","createdAt":"2026-10-12T09:30:00Z"}`},
 		{"undocumented field", http.MethodPost, "/api/notes", 201, jsonHeader, `{"id":"42","label":"x","createdAt":"2026-10-12T09:30:00Z","owner":"u"}`},
 		{"missing createdAt", http.MethodGet, "/api/notes", 200, jsonHeader, `{"notes":[{"id":"1","label":"x"}]}`},
-		// The done flag is a boolean or the listing is refused: a completion
-		// state the caller cannot read as true or false is not a flag.
+		// done is a required boolean of the note object: the listing is refused
+		// when the flag is absent, null or not a boolean at all. A completion
+		// state the caller cannot read as true or false is not a flag, and a
+		// note answered without one is the live response drifting from the
+		// contract the web types are generated from.
+		{"missing done", http.MethodGet, "/api/notes", 200, jsonHeader, `{"notes":[{"id":"1","label":"x","createdAt":"2026-10-12T09:30:00Z"}]}`},
 		{"null done", http.MethodGet, "/api/notes", 200, jsonHeader, `{"notes":[{"id":"1","label":"x","createdAt":"2026-10-12T09:30:00Z","done":null}]}`},
 		{"done is not a boolean", http.MethodGet, "/api/notes", 200, jsonHeader, `{"notes":[{"id":"1","label":"x","createdAt":"2026-10-12T09:30:00Z","done":"yes"}]}`},
 		{"bare array", http.MethodGet, "/api/notes", 200, jsonHeader, `[]`},
@@ -122,5 +131,88 @@ func TestContractRefusesForbiddenResponses(t *testing.T) {
 		if err := checkResponse(router, r, tc.status, tc.header, []byte(tc.body)); err == nil {
 			t.Fatalf("%s: contract accepted a forbidden response", tc.name)
 		}
+	}
+}
+
+// The done refusals must bite on the flag itself, not on some unrelated rule:
+// each one is refused for the note object's done property.
+func TestContractDoneRefusalsNameTheFlag(t *testing.T) {
+	router := contractRouter(t)
+	jsonHeader := http.Header{"Content-Type": []string{"application/json"}}
+	cases := []struct{ name, body string }{
+		{"missing done", `{"notes":[{"id":"1","label":"x","createdAt":"2026-10-12T09:30:00Z"}]}`},
+		{"null done", `{"notes":[{"id":"1","label":"x","createdAt":"2026-10-12T09:30:00Z","done":null}]}`},
+		{"done is not a boolean", `{"notes":[{"id":"1","label":"x","createdAt":"2026-10-12T09:30:00Z","done":"yes"}]}`},
+	}
+	for _, tc := range cases {
+		r := httptest.NewRequest(http.MethodGet, "/api/notes", nil)
+		err := checkResponse(router, r, 200, jsonHeader, []byte(tc.body))
+		if err == nil {
+			t.Fatalf("%s: contract accepted a forbidden response", tc.name)
+		}
+		if !strings.Contains(err.Error(), "done") {
+			t.Fatalf("%s: refusal does not name the flag: %v", tc.name, err)
+		}
+	}
+}
+
+// The contract is the source the web types are generated from, so the note
+// object's declared fields are pinned here: done is a required boolean, and
+// declaring it removed none of the fields the listing already carried.
+func TestContractNoteObjectDeclaresTheDoneFlag(t *testing.T) {
+	doc := contractDoc(t)
+	ref, ok := doc.Components.Schemas["Note"]
+	if !ok || ref == nil || ref.Value == nil {
+		t.Fatal("contract declares no Note schema")
+	}
+	note := ref.Value
+	required := map[string]bool{}
+	for _, name := range note.Required {
+		required[name] = true
+	}
+	for _, name := range []string{"id", "label", "createdAt", "done"} {
+		if !required[name] {
+			t.Errorf("Note does not require %q", name)
+		}
+	}
+	done, ok := note.Properties["done"]
+	if !ok || done == nil || done.Value == nil {
+		t.Fatal("Note declares no done property")
+	}
+	if !done.Value.Type.Is("boolean") {
+		t.Errorf("Note.done is %v, want boolean", done.Value.Type)
+	}
+	if done.Value.Nullable {
+		t.Error("Note.done is nullable: a blank completion state is not a flag")
+	}
+	for _, want := range []struct{ name, typ string }{
+		{"id", "string"},
+		{"label", "string"},
+		{"createdAt", "string"},
+	} {
+		field, ok := note.Properties[want.name]
+		if !ok || field == nil || field.Value == nil {
+			t.Errorf("declaring the done flag removed Note.%s", want.name)
+			continue
+		}
+		if !field.Value.Type.Is(want.typ) {
+			t.Errorf("Note.%s is %v, want %s", want.name, field.Value.Type, want.typ)
+		}
+	}
+	// The listing's items are this same note object, so the required flag bites
+	// on GET /api/notes and not only on the note the create endpoint answers with.
+	list, ok := doc.Components.Schemas["NoteList"]
+	if !ok || list == nil || list.Value == nil {
+		t.Fatal("contract declares no NoteList schema")
+	}
+	notes, ok := list.Value.Properties["notes"]
+	if !ok || notes == nil || notes.Value == nil || notes.Value.Items == nil {
+		t.Fatal("contract declares no notes array in NoteList")
+	}
+	if !notes.Value.Type.Is("array") {
+		t.Errorf("NoteList.notes is %v, want array", notes.Value.Type)
+	}
+	if notes.Value.Items.Value != note {
+		t.Error("the notes listing's items are not the Note schema")
 	}
 }
