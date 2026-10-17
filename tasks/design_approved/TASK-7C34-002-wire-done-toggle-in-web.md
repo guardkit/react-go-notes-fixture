@@ -1,14 +1,15 @@
 ---
-id: TASK-7C34-002
-title: Wire the done-flag toggle into the web client
-task_type: feature
-parent_review: TASK-REV-7C34
-feature_id: FEAT-7C34
-wave: 2
-implementation_mode: task-work
 complexity: 6
 dependencies:
-  - TASK-7C34-001
+- TASK-7C34-001
+feature_id: FEAT-7C34
+id: TASK-7C34-002
+implementation_mode: task-work
+parent_review: TASK-REV-7C34
+status: design_approved
+task_type: feature
+title: Wire the done-flag toggle into the web client
+wave: 2
 ---
 
 Let the signed-in user set a note's done flag from the web client by calling `PATCH /api/notes/{id}`, updating the in-memory list from the returned note (no follow-up GET), and surfacing a 404 as the note having gone away.

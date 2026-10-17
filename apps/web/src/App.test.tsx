@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { User, UserManager } from "oidc-client-ts";
+import { NoteGoneError } from "./api";
 import type { Note } from "./api";
 import type { RuntimeConfig } from "./config";
 
@@ -11,6 +12,12 @@ import type { RuntimeConfig } from "./config";
 const world = vi.hoisted(() => ({
   collection: [] as Note[],
   nextId: 0,
+  // Every request the view makes, counted, so a case can say the toggle cost
+  // exactly one PATCH and no second read of the list.
+  listCalls: 0,
+  patches: [] as { id: string; done: boolean }[],
+  // The id the stubbed service answers 404 for: the note that went away.
+  goneId: null as string | null,
 }));
 
 // One id space for every note, so a saved note can never reuse a key that the
@@ -24,8 +31,10 @@ vi.mock("./api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./api")>();
   return {
     ...actual,
-    listNotes: (): Promise<Note[]> =>
-      Promise.resolve(world.collection.map((note) => ({ ...note }))),
+    listNotes: (): Promise<Note[]> => {
+      world.listCalls += 1;
+      return Promise.resolve(world.collection.map((note) => ({ ...note })));
+    },
     createNote: (label: string): Promise<Note> => {
       const saved: Note = {
         id: nextNoteId(),
@@ -35,6 +44,16 @@ vi.mock("./api", async (importOriginal) => {
       };
       world.collection.push(saved);
       return Promise.resolve(saved);
+    },
+    // The stubbed PATCH route: it answers with the note carrying the flag the
+    // view asked for, and 404s for the id the case marked as gone.
+    updateNoteDone: (id: string, done: boolean): Promise<Note> => {
+      world.patches.push({ id, done });
+      if (world.goneId === id) return Promise.reject(new NoteGoneError());
+      const stored = world.collection.find((note) => note.id === id);
+      if (!stored) return Promise.reject(new NoteGoneError());
+      stored.done = done;
+      return Promise.resolve({ ...stored });
     },
   };
 });
@@ -376,6 +395,8 @@ async function flush(run: () => void): Promise<void> {
 /** Renders the notes list view over `notes`, as if a user opened the list. */
 async function viewNotes(notes: Note[]): Promise<FElement> {
   world.collection = notes;
+  world.listCalls = 0;
+  world.patches = [];
   const container = doc.createElement("div");
   doc.body.appendChild(container);
   await flush(() => {
@@ -435,6 +456,58 @@ function noteRows(container: FElement): FElement[] {
   ) as FElement[];
 }
 
+/** One field a row shows about its note, read apart from the row's controls. */
+function noteField(row: FElement, testId: string): string {
+  const field = findBy(
+    row,
+    (element) => element.getAttribute("data-testid") === testId,
+  );
+  if (!field) throw new Error(`a note row shows no ${testId}`);
+  return field.textContent;
+}
+
+/** The label a row shows for its note. */
+function noteLabel(row: FElement): string {
+  return noteField(row, "note-label");
+}
+
+/** The flag a row shows for its note: "done" or "not done". */
+function noteFlag(row: FElement): string {
+  return noteField(row, "note-done");
+}
+
+/**
+ * The toggle of a note: reached as a person reaches it — a button, named for
+ * the note it belongs to — never through a hook the view only exists for.
+ */
+function toggleFor(container: FElement, label: string): FElement {
+  const button = findBy(
+    container,
+    (element) =>
+      element.tagName === "BUTTON" &&
+      (element.getAttribute("aria-label") ?? "").includes(`"${label}"`),
+  );
+  if (!button) throw new Error(`no toggle button names the note "${label}"`);
+  return button;
+}
+
+/** What the view reports as an alert, if it reports anything at all. */
+function alerts(container: FElement): string[] {
+  return documentOrder(container)
+    .filter(
+      (node) =>
+        node instanceof FElement && node.getAttribute("role") === "alert",
+    )
+    .map((node) => node.textContent);
+}
+
+/** Presses a control and lets everything that press schedules settle. */
+async function press(control: FElement): Promise<void> {
+  await flush(() => {
+    fire(control, "click");
+  });
+}
+
 /**
  * The one total shown above the list. A total that is missing, repeated, or
  * placed inside the list is not the summary this feature specifies, so the
@@ -466,6 +539,7 @@ function tabTitleCount(): number {
 afterEach(async () => {
   await flush(closeView);
   world.collection = [];
+  world.goneId = null;
   // A title is never inherited from the case before it, so no assertion here
   // can pass on a stale tab title.
   doc.title = "";
@@ -498,7 +572,8 @@ describe("total note count above the notes list", () => {
       // The total and the rows come off the one collection: same length, and
       // one row per note in it, so the two can never disagree.
       expect(rows).toHaveLength(notes.length);
-      expect(rows.map((row) => row.textContent)).toEqual(
+      // The rows show the notes of the collection they were rendered from.
+      expect(rows.map((row) => noteLabel(row))).toEqual(
         notes.map((note) => note.label),
       );
     },
@@ -613,5 +688,123 @@ describe("note count in the browser tab title", () => {
     expect(noteRows(container)).toHaveLength(5);
     expect(tabTitle()).toBe("Notes (5)");
     expect(totalAboveTheList(container).textContent).toBe("5 notes");
+  });
+});
+
+// The done flag is the one field a person may change on a note they own, and
+// the only answer the view takes it from is the note the PATCH route returns.
+// So every case here presses the row's own control and reads the row back,
+// while counting the requests the view made to prove the flag was never
+// re-read from the list.
+describe("done-flag toggle on a note row", () => {
+  it("marks a note done from the PATCH answer, with no follow-up read", async () => {
+    const notes = collectionOf(2);
+    const container = await viewNotes(notes);
+    // The list was read once, on opening, and nothing has been patched yet.
+    expect(world.listCalls).toBe(1);
+    expect(world.patches).toEqual([]);
+
+    await press(toggleFor(container, "Note 1"));
+
+    // Exactly one PATCH, and it asked for the flag to be set on that note.
+    expect(world.patches).toEqual([{ id: notes[0]!.id, done: true }]);
+    // No second GET: the row below carries the flag the PATCH answered with.
+    expect(world.listCalls).toBe(1);
+
+    const rows = noteRows(container);
+    expect(rows).toHaveLength(2);
+    expect(noteFlag(rows[0]!)).toBe("done");
+    // Every other field of the toggled note is shown exactly as it was.
+    expect(noteLabel(rows[0]!)).toBe("Note 1");
+    // And the note that was not touched is untouched.
+    expect(noteLabel(rows[1]!)).toBe("Note 2");
+    expect(noteFlag(rows[1]!)).toBe("not done");
+    // The flag is the only thing that moved: same collection, same count.
+    expect(totalAboveTheList(container).textContent).toBe("2 notes");
+    expect(tabTitle()).toBe("Notes (2)");
+  });
+
+  it("marks a done note not done again", async () => {
+    const notes = collectionOf(1);
+    notes[0]!.done = true;
+    const container = await viewNotes(notes);
+    expect(noteFlag(noteRows(container)[0]!)).toBe("done");
+
+    await press(toggleFor(container, "Note 1"));
+
+    expect(world.patches).toEqual([{ id: notes[0]!.id, done: false }]);
+    expect(world.listCalls).toBe(1);
+    expect(noteFlag(noteRows(container)[0]!)).toBe("not done");
+  });
+
+  it("toggles the same note back and forth without re-reading the list", async () => {
+    const notes = collectionOf(2);
+    const container = await viewNotes(notes);
+    await press(toggleFor(container, "Note 2"));
+    expect(noteFlag(noteRows(container)[1]!)).toBe("done");
+    await press(toggleFor(container, "Note 2"));
+    expect(noteFlag(noteRows(container)[1]!)).toBe("not done");
+    // Two presses, two PATCHes, and still the one read the list opened with.
+    expect(world.patches).toHaveLength(2);
+    expect(world.patches.map((patch) => patch.done)).toEqual([true, false]);
+    expect(world.listCalls).toBe(1);
+    expect(noteRows(container)).toHaveLength(2);
+  });
+
+  it("offers the toggle as a button named for its note, not a bare link", async () => {
+    const container = await viewNotes(collectionOf(2));
+    const rows = noteRows(container);
+    for (const [index, row] of rows.entries()) {
+      const label = `Note ${index + 1}`;
+      const toggle = toggleFor(container, label);
+      // Reachable by role: a real button, carrying its own accessible name.
+      expect(toggle.tagName).toBe("BUTTON");
+      expect(toggle.getAttribute("aria-label")).toContain(`"${label}"`);
+      expect(row.contains(toggle)).toBe(true);
+      // The row holds no anonymous link standing in for the control.
+      const links = documentOrder(row).filter(
+        (node) => node instanceof FElement && node.tagName === "A",
+      );
+      expect(links).toHaveLength(0);
+    }
+  });
+
+  it("reports a note that has gone away and drops its row", async () => {
+    const notes = collectionOf(2);
+    world.goneId = notes[1]!.id;
+    const container = await viewNotes(notes);
+
+    await press(toggleFor(container, "Note 2"));
+
+    // One PATCH, refused with 404, and no read of the list behind it.
+    expect(world.patches).toHaveLength(1);
+    expect(world.listCalls).toBe(1);
+    // The note is said to be gone, the way a refused token is said out loud.
+    expect(alerts(container)).toContain("That note is gone.");
+    // The row does not stay behind holding the flag it last showed.
+    const rows = noteRows(container);
+    expect(rows).toHaveLength(1);
+    expect(rows.map((row) => noteLabel(row))).toEqual(["Note 1"]);
+    expect(totalAboveTheList(container).textContent).toBe("1 notes");
+    expect(tabTitle()).toBe("Notes (1)");
+  });
+
+  it("keeps the view standing when the note it was told about is gone", async () => {
+    const notes = collectionOf(1);
+    world.goneId = notes[0]!.id;
+    const container = await viewNotes(notes);
+
+    await press(toggleFor(container, "Note 1"));
+
+    // No crash: the view is still mounted, still shows its heading and its
+    // form, and still lets the person add a note.
+    expect(
+      documentOrder(container).some((node) => node.textContent === "Notes"),
+    ).toBe(true);
+    expect(
+      findBy(container, (element) => element.tagName === "INPUT"),
+    ).toBeDefined();
+    expect(noteRows(container)).toHaveLength(0);
+    expect(alerts(container)).toContain("That note is gone.");
   });
 });

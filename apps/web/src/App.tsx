@@ -1,6 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { User, UserManager } from "oidc-client-ts";
-import { createNote, listNotes, SignInRequiredError, type Note } from "./api";
+import {
+  createNote,
+  listNotes,
+  NoteGoneError,
+  SignInRequiredError,
+  updateNoteDone,
+  type Note,
+} from "./api";
 import type { RuntimeConfig } from "./config";
 
 type Props = {
@@ -16,6 +23,9 @@ export function App({ config, manager, initialUser, initialError }: Props) {
   const [label, setLabel] = useState("");
   const [error, setError] = useState(initialError);
   const [busy, setBusy] = useState(false);
+  // The one note whose flag is in flight, so only its own control goes quiet
+  // while the answer to its PATCH is awaited.
+  const [toggling, setToggling] = useState<string | null>(null);
   const token = user?.access_token ?? "";
 
   useEffect(() => {
@@ -57,6 +67,37 @@ export function App({ config, manager, initialUser, initialError }: Props) {
       setError("The note could not be saved. Please try again.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // The row is rewritten from the note the PATCH answers with: no second
+  // request goes out to ask the service what the flag now is, so the row can
+  // never show a flag the answer did not carry.
+  async function toggle(note: Note) {
+    setError("");
+    setToggling(note.id);
+    try {
+      const updated = await updateNoteDone(note.id, !note.done, token);
+      setNotes((existing) =>
+        existing.map((current) =>
+          current.id === updated.id ? updated : current,
+        ),
+      );
+    } catch (failure) {
+      if (failure instanceof SignInRequiredError) {
+        setUser(null);
+      } else if (failure instanceof NoteGoneError) {
+        // The note is not there to carry a flag any more, so its row leaves
+        // the list rather than keeping the flag it last showed.
+        setNotes((existing) =>
+          existing.filter((current) => current.id !== note.id),
+        );
+        setError("That note is gone.");
+      } else {
+        setError("The note could not be updated. Please try again.");
+      }
+    } finally {
+      setToggling(null);
     }
   }
 
@@ -116,7 +157,26 @@ export function App({ config, manager, initialUser, initialError }: Props) {
           <p data-testid="notes-count">{notes.length} notes</p>
           <ul aria-label="Your notes">
             {notes.map((note) => (
-              <li key={note.id}>{note.label}</li>
+              <li key={note.id}>
+                <span data-testid="note-label">{note.label}</span>{" "}
+                <span data-testid="note-done">
+                  {note.done ? "done" : "not done"}
+                </span>{" "}
+                <button
+                  type="button"
+                  aria-label={`${note.done ? "Reopen" : "Complete"} "${note.label}"`}
+                  disabled={toggling === note.id}
+                  onClick={() => {
+                    void toggle(note);
+                  }}
+                >
+                  {toggling === note.id
+                    ? "Saving…"
+                    : note.done
+                      ? "Mark not done"
+                      : "Mark done"}
+                </button>
+              </li>
             ))}
           </ul>
         </section>
