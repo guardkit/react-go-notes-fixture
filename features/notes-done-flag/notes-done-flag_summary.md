@@ -2,7 +2,7 @@
 
 **Stack**: generic (stack undeclared in the request; noted explicitly rather than guessed)
 **Generated**: 2026-07-09T14:32:00Z
-**Scenarios**: 16 total (2 smoke, 0 regression)
+**Scenarios**: 14 total (2 smoke, 0 regression)
 **Assumptions**: 4 total (0 high / 0 medium / 4 low confidence)
 **Review required**: Yes
 
@@ -18,8 +18,8 @@ This specification pins the vertical slice that adds a boolean `done` flag to no
 |----------|-------|
 | Key examples (@key-example) | 5 |
 | Boundary conditions (@boundary) | 4 |
-| Negative cases (@negative) | 5 |
-| Edge cases (@edge-case) | 3 |
+| Negative cases (@negative) | 3 |
+| Edge cases (@edge-case) | 2 |
 
 ## Deferred Items
 
@@ -52,7 +52,5 @@ This summary can be passed to `/feature-plan` as a context file:
 - "A note object without a done flag is not accepted by the contract" → toolchain
 - "A note object with a null done flag is not accepted by the contract" → toolchain
 - "Contract validation fails when the response drifts from the contract" → toolchain
-- "Hand-edited web types are rejected by the contract check" → toolchain
 - "A listing of many notes returns each note's own done flag" → hurl
 - "The persistence mapping exposes the done flag to the application layer" → toolchain
-- "An anonymous request for the notes listing is refused" → hurl

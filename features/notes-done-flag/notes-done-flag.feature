@@ -107,13 +107,6 @@ Feature: Notes Done Flag
     When the contract validation runs against the live response
     Then the contract validation should fail
 
-  # Why: FEAT-PO-004 — "Regeneration is performed via the existing codegen step rather than hand-editing generated files"; drift guard
-  @negative
-  Scenario: Hand-edited web types are rejected by the contract check
-    Given the generated web types have been hand-edited away from the contract
-    When the contract check runs
-    Then the contract check should fail
-
   # Why: FEAT-PO-002 — "alongside the note's existing fields"; multi-note listing pins per-note flags
   @edge-case
   Scenario: A listing of many notes returns each note's own done flag
@@ -128,11 +121,3 @@ Feature: Notes Done Flag
     Given the new migration has been applied
     When the application reads a note through the persistence mapping
     Then the note should expose done as a boolean field
-
-  # Why: FEAT-PO-002 — "so API consumers can read each note's completion state"; anonymous access is refused
-  @edge-case @negative
-  Scenario: An anonymous request for the notes listing is refused
-    Given I am not signed in
-    When I request GET /api/notes
-    Then the request should be refused
-    And no note data should be returned

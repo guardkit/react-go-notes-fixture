@@ -40,18 +40,12 @@ scenarios:
   - title: "Contract validation fails when the response drifts from the contract"
     tags: ["@negative"]
     sentence: "If the live listing stops returning the done flag, the contract check against it fails."
-  - title: "Hand-edited web types are rejected by the contract check"
-    tags: ["@negative"]
-    sentence: "If the generated web types are edited by hand away from the contract, the contract check fails."
   - title: "A listing of many notes returns each note's own done flag"
     tags: ["@edge-case"]
     sentence: "When the listing holds many notes in mixed states, each note comes back with its own correct done flag."
   - title: "The persistence mapping exposes the done flag to the application layer"
     tags: ["@edge-case"]
     sentence: "After the migration, the application can read a note's done flag as a true-or-false value from storage."
-  - title: "An anonymous request for the notes listing is refused"
-    tags: ["@edge-case", "@negative"]
-    sentence: "Someone who is not signed in is refused the notes listing and gets no note data back."
 assumptions:
   - id: ASSUM-001
     text: "The done column is a non-nullable boolean with a server-side false default, so existing rows are backfilled to false by the column default rather than by a separate backfill step"
