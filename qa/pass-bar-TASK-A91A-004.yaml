@@ -1,0 +1,43 @@
+format_version: '2.0'
+task_id: TASK-A91A-004
+registered_at:
+  sha: 0efa0237854be3713a4a4a04b9ab591d7464647d
+  date: '2026-10-18'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-done-flag-AC-001
+  text: A newly created note is not done by default
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-002
+  text: A note that existed before the migration is not done
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-003
+  text: GET /api/notes returns each note's stored done flag
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-004
+  text: A completed note is not omitted from the notes list
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-005
+  text: The contract declares the done flag on the note object
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-006
+  text: The generated web note type includes the done flag
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation

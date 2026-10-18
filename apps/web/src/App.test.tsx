@@ -9,7 +9,7 @@ import type { RuntimeConfig } from "./config";
 // through `listNotes`, which is stubbed with a fixed collection, so the count is
 // deterministic and is never seeded into the component through a back door.
 const world = vi.hoisted(() => ({
-  collection: [] as { id: string; label: string; createdAt: string }[],
+  collection: [] as Note[],
   nextId: 0,
 }));
 
@@ -31,6 +31,7 @@ vi.mock("./api", async (importOriginal) => {
         id: nextNoteId(),
         label,
         createdAt: "2026-10-13T09:00:00Z",
+        done: false,
       };
       world.collection.push(saved);
       return Promise.resolve(saved);
@@ -310,6 +311,7 @@ function collectionOf(count: number): Note[] {
     id: nextNoteId(),
     label: `Note ${index + 1}`,
     createdAt: "2026-10-12T09:30:00Z",
+    done: false,
   }));
 }
 

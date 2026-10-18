@@ -1,0 +1,119 @@
+id: FEAT-A91A
+name: "Notes Done Flag"
+description: "Add a boolean done flag to notes: a new migration adds a non-null done column defaulting to false (backfilling existing rows), GET /api/notes returns each note's done flag, the OpenAPI contract declares done as a required boolean on every note, and the generated web types are regenerated from that contract. Read-path only."
+created: "2026-10-06T00:00:00Z"
+status: planned
+complexity: 6
+estimated_tasks: 5
+
+feature_files:
+  - features/notes-done-flag/notes-done-flag.feature
+
+scenario_owners:
+  "A newly created note is not done by default": TASK-A91A-003
+  "A note that existed before the migration is not done": TASK-A91A-001
+  "GET /api/notes returns each note's stored done flag": TASK-A91A-003
+  "A completed note is not omitted from the notes list": TASK-A91A-003
+  "The done flag carries exactly the two boolean states": TASK-A91A-003
+  "Every note in the response carries a done field": TASK-A91A-003
+  "The done flag does not displace the existing note fields": TASK-A91A-003
+  "The notes read endpoint does not accept a done value from the caller": TASK-A91A-003
+  "The contract declares the done flag on the note object": TASK-A91A-002
+  "The generated web note type includes the done flag": TASK-A91A-004
+  "The done field reaches the web type only through regeneration": TASK-A91A-004
+
+tasks:
+  - id: TASK-A91A-001
+    name: "Add the notes done column migration"
+    file_path: "tasks/backlog/notes-done-flag/TASK-A91A-001-add-notes-done-migration.md"
+    complexity: 2
+    dependencies: []
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 20
+
+  - id: TASK-A91A-002
+    name: "Declare the done flag in the notes API contract"
+    file_path: "tasks/backlog/notes-done-flag/TASK-A91A-002-declare-done-in-contract.md"
+    complexity: 2
+    dependencies: []
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 20
+
+  - id: TASK-A91A-003
+    name: "Return the done flag from GET /api/notes"
+    file_path: "tasks/backlog/notes-done-flag/TASK-A91A-003-return-done-from-get-notes.md"
+    complexity: 4
+    dependencies:
+      - TASK-A91A-001
+      - TASK-A91A-002
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 60
+
+  - id: TASK-A91A-004
+    name: "Regenerate the web types from the contract"
+    file_path: "tasks/backlog/notes-done-flag/TASK-A91A-004-regenerate-web-types.md"
+    complexity: 2
+    dependencies:
+      - TASK-A91A-002
+      - TASK-A91A-003
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 20
+
+  - id: TASK-A91A-005
+    name: "Extend the notes journey and smoke specs for the done flag"
+    file_path: "tasks/backlog/notes-done-flag/TASK-A91A-005-extend-journey-smoke-for-done.md"
+    complexity: 3
+    dependencies:
+      - TASK-A91A-003
+      - TASK-A91A-004
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 40
+
+orchestration:
+  parallel_groups:
+    - - TASK-A91A-001
+      - TASK-A91A-002
+    - - TASK-A91A-003
+    - - TASK-A91A-004
+    - - TASK-A91A-005
+  estimated_duration_minutes: 160
+  recommended_parallel: 2
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A newly created note is not done by default":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note that existed before the migration is not done":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "GET /api/notes returns each note's stored done flag":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A completed note is not omitted from the notes list":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The done flag carries exactly the two boolean states":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Every note in the response carries a done field":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The done flag does not displace the existing note fields":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The notes read endpoint does not accept a done value from the caller":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The contract declares the done flag on the note object":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The generated web note type includes the done flag":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The done field reaches the web type only through regeneration":
+    verifier: "operator"

@@ -1,0 +1,53 @@
+feature: Notes Done Flag
+generated: '2026-07-09T14:32:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: A note that existed before the migration is not done
+  assumption: Pre-existing note rows are backfilled to done=false when the migration
+    runs, so no legacy note is treated as done
+  confidence: low
+  basis: The request says 'false by default' but does not state the backfill behaviour
+    for rows that already exist; the alternative is that existing rows are left null
+    or done, which would change the column's nullability and the read output for legacy
+    notes
+  human_response: deferred
+- id: ASSUM-002
+  scenario: The done flag carries exactly the two boolean states
+  assumption: The done flag is a simple boolean (done / not-done), not a richer status
+    enum
+  confidence: low
+  basis: The request calls it a 'done flag' and a 'done column' but never names the
+    type; the alternative is a status enum, which would change the migration column
+    type, the API serialization, the contract property type, and the generated web
+    type
+  human_response: deferred
+- id: ASSUM-003
+  scenario: The notes read endpoint does not accept a done value from the caller
+  assumption: This slice is read-path only; no endpoint to create, update, or toggle
+    the done flag is in scope
+  confidence: low
+  basis: The request describes only the migration and GET /api/notes; the alternative
+    is that a mutation endpoint (PATCH/PUT or a create-time field) is expected, which
+    would expand scope beyond the stated problem
+  human_response: deferred
+- id: ASSUM-004
+  scenario: The contract declares the done flag on the note object
+  assumption: The contract declares done as a required boolean present on every note,
+    not optional
+  confidence: low
+  basis: The request says the contract is 'updated to match' the response but does
+    not say required vs optional; the alternative is an optional property, which would
+    let the generated web type mark done as possibly absent
+  human_response: deferred
+- id: ASSUM-005
+  scenario: The generated web note type includes the done flag
+  assumption: The web types are regenerated from the contract as part of this change
+    rather than being hand-edited
+  confidence: low
+  basis: The request says 'the generated web types updated to match' but does not
+    say whether regeneration is automated in CI or a manual step; the alternative
+    is hand-editing the generated files, which would break the contract-as-source-of-truth
+    ordering
+  human_response: deferred

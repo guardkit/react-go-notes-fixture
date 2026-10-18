@@ -6,6 +6,10 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -195,7 +199,7 @@ func TestCreatePreservesContextOwnerAndWireShape(t *testing.T) {
 	r = r.WithContext(context.WithValue(r.Context(), contextKey{}, "trace"))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
-	want := "{\"id\":\"9007199254740993\",\"label\":\"hello\",\"createdAt\":\"2026-10-12T09:30:00Z\"}\n"
+	want := "{\"id\":\"9007199254740993\",\"label\":\"hello\",\"createdAt\":\"2026-10-12T09:30:00Z\",\"done\":false}\n"
 	if w.Code != http.StatusCreated || w.Body.String() != want {
 		t.Fatalf("got %d %q", w.Code, w.Body.String())
 	}
@@ -377,7 +381,7 @@ func TestStorageTitleIsTheTrimEveryWritePathApplies(t *testing.T) {
 func TestListIsScopedToTheSignedInOwner(t *testing.T) {
 	store := &fakeStore{list: []Note{{ID: "2", Label: "second", CreatedAt: created}}}
 	got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodGet, "/api/notes", "", goodToken)
-	want := "{\"notes\":[{\"id\":\"2\",\"label\":\"second\",\"createdAt\":\"2026-10-12T09:30:00Z\"}]}\n"
+	want := "{\"notes\":[{\"id\":\"2\",\"label\":\"second\",\"createdAt\":\"2026-10-12T09:30:00Z\",\"done\":false}]}\n"
 	if got.Code != http.StatusOK || got.Body.String() != want || store.owner != "user-1" {
 		t.Fatalf("got %d %q owner %q", got.Code, got.Body.String(), store.owner)
 	}
@@ -436,5 +440,163 @@ func TestMethodsAndHealth(t *testing.T) {
 	}
 	if got := request(h, http.MethodGet, "/api/missing", "", goodToken); got.Code != http.StatusNotFound {
 		t.Fatalf("missing: %d", got.Code)
+	}
+}
+
+// noteFixture is the test fixture's note shape: the fields the store reads back
+// for one row, plus the done flag apps/api/migrations/0003_add_done.sql gives
+// every row, so a note decoded in these tests carries the same shape the
+// migration and the store agree on.
+type noteFixture struct {
+	ID        string    `json:"id"`
+	Label     string    `json:"label"`
+	CreatedAt time.Time `json:"createdAt"`
+	Done      bool      `json:"done"`
+}
+
+// doneMigration is the file that adds the done column, reached from this
+// package the way contract_test.go reaches the contract.
+var doneMigration = filepath.Join("..", "..", "..", "..", "apps", "api", "migrations", "0003_add_done.sql")
+
+// doneColumn is the one statement the done migration must run: it names the
+// column, and pins its type and its not-null false default in one shape.
+var doneColumn = regexp.MustCompile(`^ALTER TABLE notes ADD COLUMN ([a-z_]+) BOOLEAN NOT NULL DEFAULT false$`)
+
+// migrationVersion is the version form scripts/migrate.sh records in
+// schema_migrations, taken from the file name.
+var migrationVersion = regexp.MustCompile(`^[0-9]{4}_[a-z0-9_]+$`)
+
+// doneColumnDefinition reads the done migration back from disk and returns the
+// single statement it runs. The file must be exactly the one ALTER TABLE, so
+// the backfill of rows written before it is the column default's, not a
+// separate UPDATE that a later read could miss.
+func doneColumnDefinition(t *testing.T) string {
+	t.Helper()
+	raw, err := os.ReadFile(doneMigration)
+	if err != nil {
+		t.Fatalf("read done migration: %v", err)
+	}
+	sql := ""
+	for _, line := range strings.Split(string(raw), "\n") {
+		if statement := strings.TrimSpace(line); statement != "" && !strings.HasPrefix(statement, "--") {
+			sql += " " + statement
+		}
+	}
+	statements := []string{}
+	for _, part := range strings.Split(strings.TrimSpace(sql), ";") {
+		if statement := strings.TrimSpace(part); statement != "" {
+			statements = append(statements, statement)
+		}
+	}
+	if len(statements) != 1 {
+		t.Fatalf("done migration runs %d statements, want the one ALTER TABLE: %#v", len(statements), statements)
+	}
+	if !doneColumn.MatchString(statements[0]) {
+		t.Fatalf("done migration runs %q, want %s", statements[0], doneColumn)
+	}
+	return statements[0]
+}
+
+// Every note row - written before the migration or after it - carries a done
+// flag that is never null and starts not-done, which is what the
+// NOT NULL DEFAULT false clause of the migration is for.
+func TestDoneColumnIsNotNullAndDefaultsToFalse(t *testing.T) {
+	statement := doneColumnDefinition(t)
+	if !strings.Contains(statement, "done BOOLEAN NOT NULL DEFAULT false") {
+		t.Fatalf("column definition %q is not the non-null boolean defaulting to false", statement)
+	}
+	column := doneColumn.FindStringSubmatch(statement)[1]
+	if column != "done" {
+		t.Fatalf("column is named %q, want exactly done", column)
+	}
+}
+
+// The done migration continues the version sequence scripts/migrate.sh applies
+// and records in schema_migrations: four digits, a lower-case name, and no
+// version repeated or skipped ahead of it.
+func TestDoneMigrationContinuesTheRecordedSequence(t *testing.T) {
+	entries, err := os.ReadDir(filepath.Dir(doneMigration))
+	if err != nil {
+		t.Fatalf("read migrations folder: %v", err)
+	}
+	versions := []string{}
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".sql") {
+			continue
+		}
+		version := strings.TrimSuffix(name, ".sql")
+		if !migrationVersion.MatchString(version) {
+			t.Fatalf("migration %s has a version scripts/migrate.sh cannot record", name)
+		}
+		versions = append(versions, version)
+	}
+	if len(versions) < 3 {
+		t.Fatalf("migrations folder holds %d migrations, want at least 0001, 0002 and the done migration", len(versions))
+	}
+	// ReadDir reports names in byte order, which is the order migrate.sh applies
+	// them in, so a repeated version shows up as two adjacent equal entries.
+	for i, version := range versions {
+		if i > 0 && versions[i-1] >= version {
+			t.Fatalf("migration versions are not in strictly ascending order: %q before %q", versions[i-1], version)
+		}
+	}
+	for _, want := range []string{"0001_", "0002_", "0003_add_done"} {
+		found := false
+		for _, version := range versions {
+			if strings.HasPrefix(version, want) {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("no migration named %s… in %v", want, versions)
+		}
+	}
+}
+
+// The done flag belongs to the note shape these tests speak, so it survives a
+// round trip through the fixture: the field is a boolean named after the
+// migration's column, false is answered as false, true comes back as true, and
+// a note answered without the field reads back not-done - the same answer the
+// column default gives a row written before the migration.
+func TestNoteFixtureCarriesTheDoneFlag(t *testing.T) {
+	field, ok := reflect.TypeOf(noteFixture{}).FieldByName("Done")
+	if !ok {
+		t.Fatal("note fixture has no Done field")
+	}
+	if field.Type.Kind() != reflect.Bool {
+		t.Fatalf("note fixture Done is %s, want a boolean", field.Type)
+	}
+	column := doneColumn.FindStringSubmatch(doneColumnDefinition(t))[1]
+	if tag := strings.Split(field.Tag.Get("json"), ",")[0]; tag != column {
+		t.Fatalf("note fixture Done is read from %q, want the migration's %q column", tag, column)
+	}
+
+	encoded, err := json.Marshal(noteFixture{ID: "1", Label: "hello", CreatedAt: created})
+	if err != nil {
+		t.Fatalf("encode note fixture: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"done":false`) {
+		t.Fatalf("note fixture answer %s does not carry the done flag", encoded)
+	}
+
+	for _, tc := range []struct {
+		name, body string
+		want       bool
+	}{
+		{"not done", `{"id":"1","label":"hello","createdAt":"2026-10-12T09:30:00Z","done":false}`, false},
+		{"done", `{"id":"1","label":"hello","createdAt":"2026-10-12T09:30:00Z","done":true}`, true},
+		{"absent flag reads back not-done", `{"id":"1","label":"hello","createdAt":"2026-10-12T09:30:00Z"}`, false},
+	} {
+		var note noteFixture
+		if err := json.Unmarshal([]byte(tc.body), &note); err != nil {
+			t.Fatalf("%s: decode %s: %v", tc.name, tc.body, err)
+		}
+		if note.Done != tc.want {
+			t.Fatalf("%s: done %v, want %v", tc.name, note.Done, tc.want)
+		}
+		if note.ID != "1" || note.Label != "hello" || !note.CreatedAt.Equal(created) {
+			t.Fatalf("%s: note %+v lost the fields the store reads back", tc.name, note)
+		}
 	}
 }

@@ -50,6 +50,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], video: "on" },
     },
     {
+      // The done flag is asserted at the GET /api/notes boundary the browser
+      // crosses, so it runs on the same browser as the journey.
+      name: "chromium-notes-done",
+      testMatch: /notes-done\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], video: "retain-on-failure" },
+    },
+    {
       name: "firefox-smoke",
       testMatch: /smoke\.spec\.ts/,
       use: { ...devices["Desktop Firefox"], video: smokeVideo },

@@ -15,10 +15,15 @@ import (
 )
 
 // Note uses a decimal string because JavaScript numbers cannot safely hold all BIGINT values.
+// The done flag is the completion state the contract declares required on every
+// note (contract/openapi.yaml, Note.done); the column behind it is added by
+// apps/api/migrations/0003_add_done.sql as BOOLEAN NOT NULL DEFAULT false, so a
+// note the store has not marked complete is answered not-done, never omitted.
 type Note struct {
 	ID        string    `json:"id"`
 	Label     string    `json:"label"`
 	CreatedAt time.Time `json:"createdAt"`
+	Done      bool      `json:"done"`
 }
 
 // Store is owned by the HTTP consumer; the PostgreSQL adapter implements it.
@@ -44,6 +49,10 @@ func Routes(store Store, authn Authenticator, runID string) http.Handler {
 		}{Status: "ok", Run: runID})
 	})
 	mux.Handle("GET /api/notes", signedIn(authn, func(w http.ResponseWriter, r *http.Request, owner string) {
+		// The read path is read-only (ASSUM-003): the owner comes from the token
+		// and nothing else. The body, the query and the headers are never consulted,
+		// so a caller cannot hand over a done value - each note answers with the
+		// flag its row holds, which the store read from the NOT NULL column.
 		list, err := store.List(r.Context(), owner)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "list notes failed")
