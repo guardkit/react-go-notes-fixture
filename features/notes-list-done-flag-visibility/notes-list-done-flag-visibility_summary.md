@@ -10,7 +10,9 @@ REVIEW REQUIRED: all assumptions unconfirmed (--auto mode)
 
 ## Scope
 
-This specification covers the display-layer change that shows each note's done flag in the web app's notes list and clearly marks done notes so completed notes are visually separable from outstanding ones at a glance. It spans rendering the flag per row (FEAT-PO-001) and the visually distinct done treatment (FEAT-PO-002). Toggling the done state, filtering, reordering/grouping, and note detail/edit views are out of scope.
+This specification covers the display-layer change that shows each note's done flag in the web app's notes list and clearly marks done notes so completed notes are visually separable from outstanding ones at a glance. It spans rendering the flag per row (FEAT-PO-001), the visually distinct done treatment (FEAT-PO-002), and the requirement that the distinction survive color-only perception (FEAT-PO-003). Toggling the done state, filtering, reordering/grouping, and note detail/edit views are out of scope.
+
+Worked examples use only observable interface facts drawn from the approved input — the "Done" textual label and visually differentiated row styling from the (deferred) ASSUM-003 treatment — and describe what a user sees (a displayed "Done" label, a differently styled row) rather than asserting internal state such as a set flag.
 
 ## Scenario Counts by Category
 
@@ -48,7 +50,7 @@ This summary can be passed to `/feature-plan` as a context file:
 - "Showing the done flag does not alter other list behaviour" → playwright
 - "Done notes are visually distinct from not-done notes" → playwright
 - "Rows render in the not-done presentation when the flag is not set" → playwright
-- "A note whose done flag is set renders in the done presentation" → playwright
-- "Not-done rows carry no done cue" → playwright
-- "A list of only not-done notes still shows each flag" → playwright
+- "A done note is rendered with the done treatment" → playwright
+- "Only done rows carry the non-color textual cue" → playwright
+- "A list of only not-done notes still shows each note in the not-done presentation" → playwright
 - "The done treatment is never applied to a not-done note" → playwright

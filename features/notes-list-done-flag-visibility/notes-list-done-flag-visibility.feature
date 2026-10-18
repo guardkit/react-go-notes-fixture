@@ -20,18 +20,17 @@ Feature: Notes List Done-Flag Visibility
   # [ASSUMPTION: confidence=low] The notes list already receives the done flag in the data it fetches, so no API change is required
   @key-example @smoke
   Scenario: Every note row reflects its done flag
-    Given the list contains a note whose done flag is set and a note whose done flag is not set
+    Given the list contains a done note and a not-done note
     When the notes list renders
-    Then each note row should reflect its own done flag
-    And the done note should be presented as done
-    And the not-done note should be presented as not done
+    Then the done note's row should display a "Done" label and be styled differently from the not-done note's row
+    And the not-done note's row should display no "Done" label and retain the standard row styling
 
   # Why: FEAT-PO-001 — display-only change: title, ordering and other list behaviour are untouched
   @key-example
   Scenario: Showing the done flag does not alter other list behaviour
     Given the list contains several notes in a known order
     When the notes list renders with done flags shown
-    Then each note's title should be unchanged
+    Then each note's title text should be unchanged
     And the notes should appear in the same order as before
     And no other list behaviour should change
 
@@ -42,8 +41,8 @@ Feature: Notes List Done-Flag Visibility
   Scenario: Done notes are visually distinct from not-done notes
     Given the list contains a done note and a not-done note
     When the notes list renders
-    Then the done note's row should be visually distinct from the not-done note's row
-    And the contrast between the two states should be legible in a single scan of the list
+    Then the done note's row should be styled differently from the not-done note's row
+    And the difference should be legible in a single scan of the list
 
   # Why: FEAT-PO-001 — the not-done presentation is the default for every non-done row
   # [ASSUMPTION: confidence=low] A note whose done flag is unset or null is treated as not-done and rendered in the not-done presentation
@@ -51,39 +50,42 @@ Feature: Notes List Done-Flag Visibility
   Scenario Outline: Rows render in the not-done presentation when the flag is not set
     Given the list contains a note whose done flag is <flag>
     When the notes list renders
-    Then that note's row should be presented as not done
+    Then that note's row should display no "Done" label and retain the standard row styling
 
     Examples:
       | flag   |
       | false  |
       | unset  |
 
-  # Why: FEAT-PO-001 — the done presentation is the default for every done row
+  # Why: FEAT-PO-002 — the done treatment is the default for every done row
   @boundary
-  Scenario: A note whose done flag is set renders in the done presentation
-    Given the list contains a note whose done flag is true
+  Scenario: A done note is rendered with the done treatment
+    Given the list contains a note marked done
     When the notes list renders
-    Then that note's row should be presented as done
+    Then that note's row should display a "Done" label
+    And that note's row should be styled differently from a not-done row
 
-  # Why: FEAT-PO-003 — the non-color cue must be absent on not-done rows so the two states stay mutually distinguishable
+  # Why: FEAT-PO-003 — the non-color textual cue must be present on done rows and absent on not-done rows so the two states stay mutually distinguishable
   @boundary
-  Scenario: Not-done rows carry no done cue
-    Given the list contains a note whose done flag is not set
+  Scenario: Only done rows carry the non-color textual cue
+    Given the list contains a done note and a not-done note
     When the notes list renders
-    Then that note's row should carry no done cue
-    And that note's row should retain the standard not-done presentation
+    Then the done note's row should display a "Done" label
+    And the not-done note's row should display no "Done" label
+    And the not-done note's row should retain the standard not-done presentation
 
   # Why: FEAT-PO-001 — the flag must render for every note, not only for done ones
   @negative
-  Scenario: A list of only not-done notes still shows each flag
-    Given the list contains only notes whose done flags are not set
+  Scenario: A list of only not-done notes still shows each note in the not-done presentation
+    Given the list contains only notes where none is marked done
     When the notes list renders
-    Then every row should be presented as not done
+    Then every row should display no "Done" label and retain the standard row styling
     And no row should be hidden or omitted from the list
 
   # Why: FEAT-PO-002 — the done treatment must never leak onto not-done rows
   @negative
   Scenario: The done treatment is never applied to a not-done note
-    Given the list contains a note whose done flag is not set
+    Given the list contains a not-done note
     When the notes list renders
-    Then that note's row should not receive the done treatment
+    Then that note's row should display no "Done" label
+    And that note's row should not be styled differently from a not-done row
