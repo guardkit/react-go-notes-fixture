@@ -57,6 +57,14 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], video: "retain-on-failure" },
     },
     {
+      // The same flag at the surface the person reads: the rendered rows of the
+      // notes list. It runs on the same browser as the boundary check above, so
+      // the two halves of the claim are made of one stack.
+      name: "chromium-notes-done-visibility",
+      testMatch: /notes-done-visibility\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], video: "retain-on-failure" },
+    },
+    {
       name: "firefox-smoke",
       testMatch: /smoke\.spec\.ts/,
       use: { ...devices["Desktop Firefox"], video: smokeVideo },
