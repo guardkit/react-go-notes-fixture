@@ -1,6 +1,18 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
 import type { User, UserManager } from "oidc-client-ts";
-import { createNote, listNotes, SignInRequiredError, type Note } from "./api";
+import {
+  createNote,
+  listNotes,
+  SignInRequiredError,
+  updateNoteDone,
+  type Note,
+} from "./api";
 import type { RuntimeConfig } from "./config";
 
 type Props = {
@@ -27,6 +39,31 @@ const doneFlagStyle: CSSProperties = {
   fontWeight: 700,
   marginLeft: "0.5em",
 };
+
+// The tick the person clicks: a box that reads as a control whether or not the
+// note is done, filled and marked when it is. The mark is drawn rather than
+// written, so the only words a row carries stay the note's title and the "Done"
+// cue that already answers the state without colour.
+const doneToggleStyle: CSSProperties = {
+  marginRight: "0.5em",
+  width: "1.2em",
+  height: "1.2em",
+  padding: 0,
+  borderWidth: "1px",
+  borderStyle: "solid",
+  borderColor: "#5f6368",
+  borderRadius: "0.15em",
+  background: "#ffffff",
+  color: "#ffffff",
+  cursor: "pointer",
+  lineHeight: 1,
+};
+const doneToggleOnStyle: CSSProperties = {
+  ...doneToggleStyle,
+  borderColor: "#1a7f37",
+  background: "#1a7f37",
+};
+const doneTickStyle: CSSProperties = { display: "block", margin: "0 auto" };
 
 function isDone(note: Note): boolean {
   return note.done === true;
@@ -79,6 +116,48 @@ export function App({ config, manager, initialUser, initialError }: Props) {
       setError("The note could not be saved. Please try again.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // The click is answered at once - the row shows the state the person asked
+  // for while the PATCH is still out - and then answered again by the service,
+  // which has the last word: the note that comes back replaces the row, and a
+  // PATCH that fails or a note that has been clicked again meanwhile leaves the
+  // row as the last answer says it is, not as the click hoped.
+  const attempts = useRef<Map<string, number>>(new Map());
+
+  async function toggleDone(note: Note) {
+    const id = note.id;
+    const before = isDone(note);
+    const wanted = !before;
+    const attempt = (attempts.current.get(id) ?? 0) + 1;
+    attempts.current.set(id, attempt);
+    const mine = () => attempts.current.get(id) === attempt;
+    setError("");
+    setNotes((existing) =>
+      existing.map((candidate) =>
+        candidate.id === id ? { ...candidate, done: wanted } : candidate,
+      ),
+    );
+    try {
+      const saved = await updateNoteDone(id, wanted, token);
+      if (mine()) {
+        setNotes((existing) =>
+          existing.map((candidate) =>
+            candidate.id === id ? saved : candidate,
+          ),
+        );
+      }
+    } catch (failure) {
+      if (mine()) {
+        setNotes((existing) =>
+          existing.map((candidate) =>
+            candidate.id === id ? { ...candidate, done: before } : candidate,
+          ),
+        );
+      }
+      if (failure instanceof SignInRequiredError) setUser(null);
+      setError("The completion state could not be saved. Please try again.");
     }
   }
 
@@ -143,6 +222,42 @@ export function App({ config, manager, initialUser, initialError }: Props) {
                 className={isDone(note) ? "note-row note-row-done" : "note-row"}
                 style={isDone(note) ? doneRowStyle : undefined}
               >
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={isDone(note)}
+                  aria-label={
+                    isDone(note)
+                      ? `Mark "${note.label}" as not done`
+                      : `Mark "${note.label}" as done`
+                  }
+                  data-testid="done-toggle"
+                  className={
+                    isDone(note) ? "done-toggle done-toggle-on" : "done-toggle"
+                  }
+                  style={isDone(note) ? doneToggleOnStyle : doneToggleStyle}
+                  onClick={() => {
+                    void toggleDone(note);
+                  }}
+                >
+                  {isDone(note) ? (
+                    <svg
+                      aria-hidden="true"
+                      focusable="false"
+                      viewBox="0 0 12 12"
+                      width="12"
+                      height="12"
+                      style={doneTickStyle}
+                    >
+                      <path
+                        d="M2.2 6.4 4.8 9 9.8 3.2"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                      />
+                    </svg>
+                  ) : null}
+                </button>
                 <span
                   className="note-row-title"
                   style={isDone(note) ? doneTitleStyle : undefined}

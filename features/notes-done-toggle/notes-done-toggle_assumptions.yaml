@@ -1,0 +1,41 @@
+feature: Notes Done-Toggle (Web App)
+generated: '2026-07-09T14:32:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: Ticking a note in the list marks it as done
+  assumption: 'The done state is represented as a boolean done flag (done: true /
+    done: false) rather than a completed field or a status enum'
+  confidence: low
+  basis: 'Open question in the input: exact field name and type of the done flag not
+    stated; the contract shows a boolean done flag but the request does not name the
+    field, so the boolean-done choice is inferred over a completed field or status
+    enum'
+  human_response: deferred
+- id: ASSUM-002
+  scenario: Ticking a note in the list marks it as done
+  assumption: A done note is visually distinguished by a struck-through or dimmed
+    title
+  confidence: low
+  basis: FEAT-PO-001 gives struck-through or dimmed only as examples; the request
+    does not fix which visual treatment is used, so struck-through/dimmed is chosen
+    over any other distinguishing style
+  human_response: deferred
+- id: ASSUM-003
+  scenario: Ticking a note saves the done state through PATCH /api/notes/{id}
+  assumption: The tick control updates optimistically while the PATCH is in flight
+    and reconciles to the server-confirmed state on response
+  confidence: low
+  basis: 'Open question in the input: optimistic updating vs waiting for the server
+    response before changing appearance is undecided; optimistic-then-reconcile is
+    chosen over waiting for the response'
+  human_response: deferred
+- id: ASSUM-004
+  scenario: A note ticked as done appears ticked after a reload
+  assumption: The notes list read path (GET of notes) returns the done flag for each
+    note so the control can render its persisted state on load and after reload
+  confidence: low
+  basis: ASM-002 in the input is a medium-confidence assumption, not a settled fact;
+    the read path returning the done flag is assumed over the read path omitting it
+  human_response: deferred

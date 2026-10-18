@@ -1,0 +1,43 @@
+feature: notes-done-toggle
+generated: "2026-07-09T14:32:00Z"
+endpoint:
+  method: PATCH
+  path: /api/notes/{id}
+scenarios:
+  - title: "Ticking a note in the list marks it as done"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Ticking a note's completion control in the list marks that note as done and visually distinguishes it."
+  - title: "Unticking a done note in the list returns it to not done"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Unticking a done note's completion control in the list returns it to the not-done state and removes the done styling."
+  - title: "The completion control is operable without opening the note detail view"
+    tags: ["@key-example"]
+    sentence: "A note can be marked done straight from the list without ever opening its detail view."
+  - title: "Ticking a note saves the done state through PATCH /api/notes/{id}"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Ticking a note saves it as done via the note update endpoint and shows the state the server confirms."
+  - title: "Unticking a note saves the not-done state through PATCH /api/notes/{id}"
+    tags: ["@key-example"]
+    sentence: "Unticking a note saves it as not done via the note update endpoint and shows the state the server confirms."
+  - title: "A note ticked as done appears ticked after a reload"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A note saved as done still shows as ticked after the list is reloaded, because the state is read back from the server."
+  - title: "A note returned to not done appears unticked after a reload"
+    tags: ["@key-example"]
+    sentence: "A note saved as not done still shows as unticked after the list is reloaded, because the state is read back from the server."
+  - title: "The completion control accepts only the two binary states"
+    tags: ["@boundary"]
+    sentence: "The completion control only ever shows done or not done, with no intermediate status."
+assumptions:
+  - id: ASSUM-001
+    text: "The done state is represented as a boolean done flag (done: true / done: false) rather than a completed field or a status enum"
+    basis: "Open question in the input: exact field name and type of the done flag not stated; the contract shows a boolean done flag but the request does not name the field, so the boolean-done choice is inferred over a completed field or status enum"
+  - id: ASSUM-002
+    text: "A done note is visually distinguished by a struck-through or dimmed title"
+    basis: "FEAT-PO-001 gives struck-through or dimmed only as examples; the request does not fix which visual treatment is used, so struck-through/dimmed is chosen over any other distinguishing style"
+  - id: ASSUM-003
+    text: "The tick control updates optimistically while the PATCH is in flight and reconciles to the server-confirmed state on response"
+    basis: "Open question in the input: optimistic updating vs waiting for the server response before changing appearance is undecided; optimistic-then-reconcile is chosen over waiting for the response"
+  - id: ASSUM-004
+    text: "The notes list read path (GET of notes) returns the done flag for each note so the control can render its persisted state on load and after reload"
+    basis: "ASM-002 in the input is a medium-confidence assumption, not a settled fact; the read path returning the done flag is assumed over the read path omitting it"

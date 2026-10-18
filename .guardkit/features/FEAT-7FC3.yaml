@@ -1,0 +1,83 @@
+id: FEAT-7FC3
+name: "Notes Done-Toggle (Web App)"
+description: "Add an interactive tick/untick completion control to the web app's notes list that saves the done state through PATCH /api/notes/{id} and shows the saved state after a reload"
+created: "2026-07-09T14:32:00Z"
+status: planned
+complexity: 5
+estimated_tasks: 3
+
+feature_files:
+  - features/notes-done-toggle/notes-done-toggle.feature
+
+scenario_owners:
+  "Ticking a note in the list marks it as done": TASK-7FC3-001
+  "Unticking a done note in the list returns it to not done": TASK-7FC3-001
+  "The completion control is operable without opening the note detail view": TASK-7FC3-001
+  "Ticking a note saves the done state through PATCH /api/notes/{id}": TASK-7FC3-001
+  "Unticking a note saves the not-done state through PATCH /api/notes/{id}": TASK-7FC3-001
+  "A note ticked as done appears ticked after a reload": TASK-7FC3-001
+  "A note returned to not done appears unticked after a reload": TASK-7FC3-001
+  "The completion control accepts only the two binary states": TASK-7FC3-001
+
+tasks:
+  - id: TASK-7FC3-001
+    name: "Add interactive done-toggle control to the notes list"
+    file_path: "tasks/backlog/notes-done-toggle/TASK-7FC3-001-add-done-toggle-control.md"
+    complexity: 5
+    dependencies: []
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 90
+
+  - id: TASK-7FC3-002
+    name: "Add unit tests for the done-toggle control"
+    file_path: "tasks/backlog/notes-done-toggle/TASK-7FC3-002-done-toggle-unit-tests.md"
+    complexity: 3
+    dependencies:
+      - TASK-7FC3-001
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 45
+
+  - id: TASK-7FC3-003
+    name: "Add end-to-end tests for the done-toggle flow"
+    file_path: "tasks/backlog/notes-done-toggle/TASK-7FC3-003-done-toggle-e2e-tests.md"
+    complexity: 4
+    dependencies:
+      - TASK-7FC3-001
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 60
+
+orchestration:
+  parallel_groups:
+    - - TASK-7FC3-001
+    - - TASK-7FC3-002
+      - TASK-7FC3-003
+  estimated_duration_minutes: 195
+  recommended_parallel: 2
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Ticking a note in the list marks it as done":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Unticking a done note in the list returns it to not done":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The completion control is operable without opening the note detail view":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Ticking a note saves the done state through PATCH /api/notes/{id}":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Unticking a note saves the not-done state through PATCH /api/notes/{id}":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note ticked as done appears ticked after a reload":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note returned to not done appears unticked after a reload":
+    verifier: "probe:process"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The completion control accepts only the two binary states":
+    verifier: "probe:process"
