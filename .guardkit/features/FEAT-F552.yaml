@@ -1,0 +1,57 @@
+id: FEAT-F552
+name: "Notes Done-Flag API"
+description: "PATCH /api/notes/{id} sets the signed-in owner's note done flag (true/false), returns the updated note, and answers 404 for missing or foreign notes."
+created: "2026-07-09T14:32:00Z"
+status: planned
+complexity: 5
+estimated_tasks: 3
+feature_files:
+  - features/notes-done-flag-api/notes-done-flag-api.feature
+
+tasks:
+  - id: TASK-F552-001
+    name: "Add the storage write path that sets a note's done flag"
+    file_path: "tasks/backlog/notes-done-flag-api/TASK-F552-001-storage-write-path.md"
+    complexity: 4
+    dependencies: []
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 45
+
+  - id: TASK-F552-002
+    name: "Wire PATCH /api/notes/{id} through Routes"
+    file_path: "tasks/backlog/notes-done-flag-api/TASK-F552-002-wire-patch-route.md"
+    complexity: 6
+    dependencies:
+      - TASK-F552-001
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 75
+
+  - id: TASK-F552-003
+    name: "Publish the done-flag contract in OpenAPI and generated types"
+    file_path: "tasks/backlog/notes-done-flag-api/TASK-F552-003-openapi-and-types.md"
+    complexity: 3
+    dependencies:
+      - TASK-F552-002
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 30
+
+orchestration:
+  parallel_groups:
+    - - TASK-F552-001
+    - - TASK-F552-002
+    - - TASK-F552-003
+  estimated_duration_minutes: 150
+  recommended_parallel: 1
+
+scenario_owners:
+  "Owner sets a note's done flag to true": TASK-F552-002
+  "Owner sets a note's done flag to false": TASK-F552-002
+  "Re-sending the same done value yields the same updated note": TASK-F552-002
+  "The done flag accepts each boolean value": TASK-F552-002
+  "A note id that does not exist is answered with 404": TASK-F552-002
+  "A note belonging to another user is answered with 404": TASK-F552-002
+  "An unauthenticated request is refused before any note mutation": TASK-F552-002
+  "The updated note representation carries its identity and new done state": TASK-F552-002
