@@ -21,15 +21,6 @@ assumptions:
     and a full note representation including label and created-at
   human_response: deferred
 - id: ASSUM-003
-  scenario: Owner sets a note's done flag to true
-  assumption: A successful update returns HTTP 200 with the updated note as the JSON
-    response body
-  confidence: low
-  basis: The input states the endpoint returns the updated note but does not state
-    the status code; the alternatives considered were 200 with a body (chosen, consistent
-    with the existing GET /api/notes 200 pattern) and 204 No Content
-  human_response: deferred
-- id: ASSUM-004
   scenario: A note id that does not exist is answered with 404
   assumption: Note ids are opaque strings; no specific format (integer, UUID) is enforced
   confidence: low

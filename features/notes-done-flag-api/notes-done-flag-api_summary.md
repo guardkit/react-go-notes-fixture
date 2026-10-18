@@ -3,14 +3,14 @@
 **Stack**: generic
 **Generated**: 2026-07-09T14:32:00Z
 **Scenarios**: 8 total (2 smoke, 0 regression)
-**Assumptions**: 4 total (0 high / 0 medium / 4 low confidence)
+**Assumptions**: 3 total (0 high / 0 medium / 3 low confidence)
 **Review required**: Yes
 
 REVIEW REQUIRED: all assumptions unconfirmed (--auto mode)
 
 ## Scope
 
-This specification covers the PATCH /api/notes/{id} endpoint that lets a signed-in owner set a note's done flag to true or false, returning the updated note on success. It pins the ownership-scoped 404 rule (missing and foreign notes are indistinguishable), the boolean-only constraint on the done flag, idempotency of repeated updates, and the refusal of unauthenticated requests. The stack is undeclared and treated as generic; the supplied repository code is a Go HTTP handler with a bearer-token authenticator and string note ids, which informs the observable interface facts used in the steps.
+This specification covers the PATCH /api/notes/{id} endpoint that lets a signed-in owner set a note's done flag to true or false, returning the updated note on success. It pins the ownership-scoped 404 rule (missing and foreign notes are indistinguishable), the boolean-only constraint on the done flag, idempotency of repeated updates, and the refusal of unauthenticated requests. The stack is undeclared and treated as generic; the supplied repository code is a Go HTTP handler with a bearer-token authenticator and string note ids, which informs the observable interface facts used in the steps. Observable steps describe only what the request or supplied docs state (e.g., "the response returns the updated note", "the response returns 404"); status codes like 200 are omitted from happy-path steps because the request does not explicitly define them there.
 
 ## Scenario Counts by Category
 
@@ -29,8 +29,7 @@ None. All groups were proposed and accepted in headless mode.
 
 - ASSUM-001: An unauthenticated PATCH request is answered with 401 sign-in required
 - ASSUM-002: The updated-note response includes at minimum the note's id and done state
-- ASSUM-003: A successful update returns HTTP 200 with the updated note as the JSON response body
-- ASSUM-004: Note ids are opaque strings; no specific format (integer, UUID) is enforced
+- ASSUM-003: Note ids are opaque strings; no specific format (integer, UUID) is enforced
 
 ## Verifier routing (proposed)
 
