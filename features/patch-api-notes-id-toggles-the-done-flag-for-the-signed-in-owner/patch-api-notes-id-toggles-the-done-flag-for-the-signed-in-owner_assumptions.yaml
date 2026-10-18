@@ -1,0 +1,76 @@
+feature: PATCH /api/notes/{id} toggles the done flag for the signed-in owner
+generated: '2026-07-09T14:32:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: An unauthenticated update is refused
+  assumption: Unauthenticated PATCH /api/notes/{id} is refused with 401
+  confidence: low
+  basis: 'Open question in the input: 401 vs 403 for unauthenticated requests; the
+    request specifies only 404 semantics for missing/foreign notes'
+  human_response: deferred
+- id: ASSUM-002
+  scenario: A malformed JSON body is refused
+  assumption: A malformed (unparseable) JSON body is refused with 400
+  confidence: low
+  basis: Not stated in the request; chose 400 (malformed request) over 422 (unprocessable
+    content)
+  human_response: deferred
+- id: ASSUM-003
+  scenario: A non-boolean done value is rejected
+  assumption: A non-boolean done value is refused with 400
+  confidence: low
+  basis: Request says '4xx client error' without a specific code; chose 400 (bad request)
+    over 422 (unprocessable entity)
+  human_response: deferred
+- id: ASSUM-004
+  scenario: A body attempting to change fields other than done is rejected
+  assumption: A body attempting to mutate fields other than done is refused with 400
+  confidence: low
+  basis: Request says '4xx client error' without a specific code; chose 400 (bad request)
+    over 422 (unprocessable entity)
+  human_response: deferred
+- id: ASSUM-005
+  scenario: An empty body is rejected
+  assumption: An empty JSON body is refused with 400
+  confidence: low
+  basis: Request does not state whether an empty body is accepted as a no-op or rejected;
+    chose rejection (400) over acceptance (200 no-op)
+  human_response: deferred
+- id: ASSUM-006
+  scenario: Owner marks a note done and receives the updated note
+  assumption: The returned updated note includes id, label, and done
+  confidence: low
+  basis: 'Open question in the input: exact representation of the returned note (id,
+    text/label, done, timestamps); chose id/label/done over including timestamps'
+  human_response: deferred
+- id: ASSUM-007
+  scenario: Owner marks a note done and receives the updated note
+  assumption: The success response status is 200
+  confidence: low
+  basis: Request says 'returns the updated note' without a status; chose 200 (OK)
+    over 204 (No Content)
+  human_response: deferred
+- id: ASSUM-008
+  scenario: A non-boolean done value is rejected
+  assumption: The done field is required in the PATCH body
+  confidence: low
+  basis: Request does not state whether an absent done field is a no-op or an error;
+    chose required (reject when absent) over optional (no-op when absent)
+  human_response: deferred
+- id: ASSUM-009
+  scenario: A body attempting to change fields other than done is rejected
+  assumption: Only the done field is permitted in the PATCH body; other fields are
+    rejected
+  confidence: low
+  basis: 'Open question in the input: whether the body supports fields other than
+    done; chose done-only (reject others) over future extensibility'
+  human_response: deferred
+- id: ASSUM-010
+  scenario: Owner marks a note done and receives the updated note
+  assumption: The note identifier is a string id used in the path
+  confidence: low
+  basis: Request uses {id} without stating its type; chose string id over numeric
+    id
+  human_response: deferred

@@ -1,0 +1,79 @@
+feature: patch-api-notes-id-toggles-the-done-flag-for-the-signed-in-owner
+generated: "2026-07-09T14:32:00Z"
+endpoint:
+  method: PATCH
+  path: /api/notes/{id}
+scenarios:
+  - title: "Owner marks a note done and receives the updated note"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A signed-in owner who marks their note done gets back the note with the done flag now true and its other details intact."
+  - title: "Owner marks a note not done and receives the updated note"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A signed-in owner who marks their note not done gets back the note with the done flag now false and its other details intact."
+  - title: "Only the done flag is mutated by the update"
+    tags: ["@key-example"]
+    sentence: "Toggling the done flag changes nothing else about the note, such as its label."
+  - title: "Updating a note that does not exist answers 404"
+    tags: ["@negative", "@smoke"]
+    sentence: "Trying to update a note id that does not exist is refused with a not-found answer that gives no hint about whether the note exists."
+  - title: "Updating another user's note answers 404"
+    tags: ["@negative", "@smoke"]
+    sentence: "Trying to update a note that belongs to someone else is refused with a not-found answer that gives no hint about whether the note exists."
+  - title: "Missing and foreign notes yield the same refusal"
+    tags: ["@negative"]
+    sentence: "A nonexistent note and another person's note are refused in exactly the same way, so no one can tell which notes exist under other owners."
+  - title: "A non-boolean done value is rejected"
+    tags: ["@negative"]
+    sentence: "Sending a done value that is not true or false is refused, and the stored note is left untouched."
+  - title: "A body attempting to change fields other than done is rejected"
+    tags: ["@negative"]
+    sentence: "Sending a body that tries to change fields other than the done flag is refused, and the stored note keeps its original label."
+  - title: "An empty body is rejected"
+    tags: ["@negative"]
+    sentence: "Sending an empty body is refused, and the stored note is left untouched."
+  - title: "Setting done to its current value succeeds idempotently"
+    tags: ["@edge-case"]
+    sentence: "Marking a note done when it is already done still succeeds and returns the note as done."
+  - title: "The toggled done flag persists for a later read"
+    tags: ["@edge-case"]
+    sentence: "After toggling the done flag, reading the note again shows the new done state."
+  - title: "A rejected payload does not partially mutate the note"
+    tags: ["@edge-case"]
+    sentence: "When a body is rejected, none of its changes are applied, so the note keeps both its original label and its original done state."
+  - title: "An unauthenticated update is refused"
+    tags: ["@edge-case"]
+    sentence: "An update sent without being signed in is refused."
+  - title: "A malformed JSON body is refused"
+    tags: ["@edge-case"]
+    sentence: "An update sent with unparseable JSON is refused, and the stored note is left untouched."
+assumptions:
+  - id: ASSUM-001
+    text: "Unauthenticated PATCH /api/notes/{id} is refused with 401"
+    basis: "Open question in the input: 401 vs 403 for unauthenticated requests; the request specifies only 404 semantics for missing/foreign notes"
+  - id: ASSUM-002
+    text: "A malformed (unparseable) JSON body is refused with 400"
+    basis: "Not stated in the request; chose 400 (malformed request) over 422 (unprocessable content)"
+  - id: ASSUM-003
+    text: "A non-boolean done value is refused with 400"
+    basis: "Request says '4xx client error' without a specific code; chose 400 (bad request) over 422 (unprocessable entity)"
+  - id: ASSUM-004
+    text: "A body attempting to mutate fields other than done is refused with 400"
+    basis: "Request says '4xx client error' without a specific code; chose 400 (bad request) over 422 (unprocessable entity)"
+  - id: ASSUM-005
+    text: "An empty JSON body is refused with 400"
+    basis: "Request does not state whether an empty body is accepted as a no-op or rejected; chose rejection (400) over acceptance (200 no-op)"
+  - id: ASSUM-006
+    text: "The returned updated note includes id, label, and done"
+    basis: "Open question in the input: exact representation of the returned note (id, text/label, done, timestamps); chose id/label/done over including timestamps"
+  - id: ASSUM-007
+    text: "The success response status is 200"
+    basis: "Request says 'returns the updated note' without a status; chose 200 (OK) over 204 (No Content)"
+  - id: ASSUM-008
+    text: "The done field is required in the PATCH body"
+    basis: "Request does not state whether an absent done field is a no-op or an error; chose required (reject when absent) over optional (no-op when absent)"
+  - id: ASSUM-009
+    text: "Only the done field is permitted in the PATCH body; other fields are rejected"
+    basis: "Open question in the input: whether the body supports fields other than done; chose done-only (reject others) over future extensibility"
+  - id: ASSUM-010
+    text: "The note identifier is a string id used in the path"
+    basis: "Request uses {id} without stating its type; chose string id over numeric id"
