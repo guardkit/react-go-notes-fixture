@@ -1,0 +1,96 @@
+feature: Notes List Done-State Visibility
+generated: '2026-07-09T14:32:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: The notes list shows each note's done status without opening the note
+  assumption: The notes list row payload already includes the note's boolean done
+    flag, so no backend change is needed to expose it
+  confidence: low
+  basis: 'Open question in the input: the list may fetch a reduced summary payload
+    that omits the flag. Chose between (a) the flag is already on the row payload
+    and FEAT-PO-001 is presentational only, or (b) a backend change is required to
+    include it.'
+  human_response: deferred
+- id: ASSUM-002
+  scenario: A note with no explicit done value is treated as not done
+  assumption: A note with no explicit done value is treated as not done rather than
+    rendering an unknown or broken state
+  confidence: low
+  basis: Stated in FEAT-PO-001 but the underlying model behaviour is unconfirmed.
+    Chose between (a) absent flag defaults to not-done, or (b) absent flag renders
+    an unknown/broken state.
+  human_response: deferred
+- id: ASSUM-003
+  scenario: A done note is visually distinguished from open notes by more than one
+    channel
+  assumption: The done treatment combines a check mark plus a 'Done' label with a
+    row-level treatment such as muted title weight or strikethrough
+  confidence: low
+  basis: FEAT-PO-003 gives examples ('such as'), not a fixed design. Chose between
+    (a) check mark + 'Done' label + muted/strikethrough title, or (b) a different
+    combination of non-colour channels.
+  human_response: deferred
+- id: ASSUM-004
+  scenario: A screen-reader user hears each note's completion status in row order
+  assumption: The accessible announcement names the state explicitly as 'Done' or
+    'Not done'
+  confidence: low
+  basis: FEAT-PO-004 gives 'for example' wording. Chose between (a) the labels 'Done'
+    / 'Not done', or (b) alternative explicit state wording.
+  human_response: deferred
+- id: ASSUM-005
+  scenario: Done rows remain distinguishable by shape or text under high-contrast
+    rendering
+  assumption: In high-contrast rendering, done rows stay distinguishable via border,
+    underline, or the persisted text label
+  confidence: low
+  basis: FEAT-PO-005 lists examples ('such as'). Chose between (a) border/underline/persisted
+    text label, or (b) other non-colour differentiators.
+  human_response: deferred
+- id: ASSUM-006
+  scenario: The row layout holds at the narrowest supported viewport
+  assumption: The narrowest supported viewport is a single mobile-class width at which
+    the row layout must hold
+  confidence: low
+  basis: The input requires the layout to hold at 'the narrowest supported viewport'
+    but never states which width. Chose between (a) a single mobile-class breakpoint,
+    or (b) a specific documented minimum width.
+  human_response: deferred
+- id: ASSUM-007
+  scenario: The notes list shows each note's done status without opening the note
+  assumption: The web app has a single notes list view whose rows are uniform, so
+    one indicator implementation covers the request
+  confidence: low
+  basis: ASM-007 in the input is medium-confidence and unconfirmed. Chose between
+    (a) one uniform list view, or (b) multiple list variants (search, tags, archives)
+    each needing the treatment.
+  human_response: deferred
+- id: ASSUM-008
+  scenario: A done note shows its indicator in the done state
+  assumption: '''Done'' is a binary state — a note is either done or not done — with
+    no partial, archived, or multi-state completion model'
+  confidence: low
+  basis: ASM-002 in the input is medium-confidence and unconfirmed. Chose between
+    (a) a binary done/not-done model, or (b) a multi-state completion model requiring
+    the indicator to enumerate more states.
+  human_response: deferred
+- id: ASSUM-009
+  scenario: A done note shows its indicator in the done state
+  assumption: The note model already persists a boolean done flag that the web app
+    can read; the request is to display it, not to introduce it
+  confidence: low
+  basis: ASM-001 in the input is high-confidence but unconfirmed by code shown to
+    me. Chose between (a) the flag already exists and is read-only here, or (b) a
+    storage/model change and write path are prerequisites.
+  human_response: deferred
+- id: ASSUM-010
+  scenario: A mixed list renders done and open rows side by side without ambiguity
+  assumption: Done notes remain in the default list view mixed with open notes rather
+    than being grouped, dimmed, or moved to the end
+  confidence: low
+  basis: Open question in the input about whether done notes are mixed or grouped.
+    Chose between (a) mixed in the default view, or (b) grouped/dimmed/moved to the
+    end.
+  human_response: deferred
