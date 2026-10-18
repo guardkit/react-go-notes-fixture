@@ -47,10 +47,14 @@ func (s PGStore) Create(ctx context.Context, owner, label string) (note Note, er
 	// its surrounding whitespace, so the stored row - and the label this call
 	// reads back from RETURNING - can never carry it. Only the edges are cut.
 	label = storageTitle(label)
+	// The flag is never a parameter of this write: the column's NOT NULL DEFAULT
+	// false (0003_add_done.sql) decides it, and the value the row got is read
+	// back from RETURNING, so what the create response answers is what storage
+	// holds. A caller has no way to hand one over.
 	var id int64
 	if err := tx.QueryRow(queryCtx,
-		"INSERT INTO notes (owner_sub, label) VALUES ($1, $2) RETURNING id, label, created_at", owner, label,
-	).Scan(&id, &note.Label, &note.CreatedAt); err != nil {
+		"INSERT INTO notes (owner_sub, label) VALUES ($1, $2) RETURNING id, label, created_at, done", owner, label,
+	).Scan(&id, &note.Label, &note.CreatedAt, &note.Done); err != nil {
 		return Note{}, fmt.Errorf("insert note: %w", err)
 	}
 	if err := tx.Commit(queryCtx); err != nil {
@@ -61,12 +65,14 @@ func (s PGStore) Create(ctx context.Context, owner, label string) (note Note, er
 	return note, nil
 }
 
-// List returns owner's newest notes first.
+// List returns owner's newest notes first. Every column of the row is read back,
+// the done flag included: the column is NOT NULL, so each note this returns
+// carries the flag storage holds, and no note is dropped for being finished.
 func (s PGStore) List(ctx context.Context, owner string) ([]Note, error) {
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	rows, err := s.Pool.Query(queryCtx,
-		"SELECT id, label, created_at FROM notes WHERE owner_sub = $1 ORDER BY created_at DESC, id DESC LIMIT $2",
+		"SELECT id, label, created_at, done FROM notes WHERE owner_sub = $1 ORDER BY created_at DESC, id DESC LIMIT $2",
 		owner, listLimit)
 	if err != nil {
 		return nil, fmt.Errorf("query notes: %w", err)
@@ -76,7 +82,7 @@ func (s PGStore) List(ctx context.Context, owner string) ([]Note, error) {
 	for rows.Next() {
 		var id int64
 		var note Note
-		if err := rows.Scan(&id, &note.Label, &note.CreatedAt); err != nil {
+		if err := rows.Scan(&id, &note.Label, &note.CreatedAt, &note.Done); err != nil {
 			return nil, fmt.Errorf("read note: %w", err)
 		}
 		note.ID = strconv.FormatInt(id, 10)

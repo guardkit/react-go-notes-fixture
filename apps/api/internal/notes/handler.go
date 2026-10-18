@@ -49,6 +49,10 @@ func Routes(store Store, authn Authenticator, runID string) http.Handler {
 		}{Status: "ok", Run: runID})
 	})
 	mux.Handle("GET /api/notes", signedIn(authn, func(w http.ResponseWriter, r *http.Request, owner string) {
+		// The read path is read-only (ASSUM-003): the owner comes from the token
+		// and nothing else. The body, the query and the headers are never consulted,
+		// so a caller cannot hand over a done value - each note answers with the
+		// flag its row holds, which the store read from the NOT NULL column.
 		list, err := store.List(r.Context(), owner)
 		if err != nil {
 			slog.ErrorContext(r.Context(), "list notes failed")

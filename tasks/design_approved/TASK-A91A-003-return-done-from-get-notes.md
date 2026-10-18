@@ -1,15 +1,16 @@
 ---
-id: TASK-A91A-003
-title: Return the done flag from GET /api/notes
-task_type: feature
-parent_review: FEAT-A91A
-feature_id: FEAT-A91A
-wave: 2
-implementation_mode: task-work
 complexity: 4
 dependencies:
-  - TASK-A91A-001
-  - TASK-A91A-002
+- TASK-A91A-001
+- TASK-A91A-002
+feature_id: FEAT-A91A
+id: TASK-A91A-003
+implementation_mode: task-work
+parent_review: FEAT-A91A
+status: design_approved
+task_type: feature
+title: Return the done flag from GET /api/notes
+wave: 2
 ---
 
 Make `GET /api/notes` return each note's stored `done` flag on the wire, and make note creation leave `done` false by default, so the delivered surface exposes the flag exactly as the migration stored it and the contract declares it.
