@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import type { User, UserManager } from "oidc-client-ts";
 import { createNote, listNotes, SignInRequiredError, type Note } from "./api";
 import type { RuntimeConfig } from "./config";
@@ -9,6 +9,28 @@ type Props = {
   initialUser: User | null;
   initialError: string;
 };
+
+// The row treatment a done note gets and a not-done note never does. The word
+// below is the cue that carries the state on its own - a class and a style only
+// set the row apart for the eye - so the two states stay distinguishable to a
+// screen reader and without colour. A note whose flag is missing or null is
+// answered as not-done, never as a third state, and a done note keeps the
+// position the list gave it.
+const doneRowStyle: CSSProperties = {
+  color: "#5f6368",
+  fontStyle: "italic",
+  opacity: 0.72,
+};
+const doneTitleStyle: CSSProperties = { textDecorationLine: "line-through" };
+const doneFlagStyle: CSSProperties = {
+  color: "#1a7f37",
+  fontWeight: 700,
+  marginLeft: "0.5em",
+};
+
+function isDone(note: Note): boolean {
+  return note.done === true;
+}
 
 export function App({ config, manager, initialUser, initialError }: Props) {
   const [user, setUser] = useState<User | null>(initialUser);
@@ -116,7 +138,23 @@ export function App({ config, manager, initialUser, initialError }: Props) {
           <p data-testid="notes-count">{notes.length} notes</p>
           <ul aria-label="Your notes">
             {notes.map((note) => (
-              <li key={note.id}>{note.label}</li>
+              <li
+                key={note.id}
+                className={isDone(note) ? "note-row note-row-done" : "note-row"}
+                style={isDone(note) ? doneRowStyle : undefined}
+              >
+                <span
+                  className="note-row-title"
+                  style={isDone(note) ? doneTitleStyle : undefined}
+                >
+                  {note.label}
+                </span>
+                {isDone(note) ? (
+                  <span className="note-row-done-flag" style={doneFlagStyle}>
+                    Done
+                  </span>
+                ) : null}
+              </li>
             ))}
           </ul>
         </section>
