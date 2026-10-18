@@ -1,0 +1,38 @@
+format_version: '2.0'
+task_id: TASK-1291-002
+registered_at:
+  sha: 971ec840fee33a410d8f52ebaedf01b88e1768f4
+  date: '2026-10-18'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-list-done-state-visibility-AC-001
+  text: The notes list shows each note's done status without opening the note
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-list-done-state-visibility-AC-002
+  text: A done note shows its indicator in the done state
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-list-done-state-visibility-AC-003
+  text: An open note shows the indicator in the not-done state
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-list-done-state-visibility-AC-004
+  text: A done note is visually distinguished from open notes by more than one channel
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-list-done-state-visibility-AC-005
+  text: The done indicator appears in a consistent position across all rows
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation
