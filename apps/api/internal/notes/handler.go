@@ -31,6 +31,13 @@ type Note struct {
 type Store interface {
 	Create(ctx context.Context, owner, label string) (Note, error)
 	List(ctx context.Context, owner string) ([]Note, error)
+	// UpdateDone sets the done flag of owner's note id and returns the note as
+	// storage now holds it. The update is scoped to the owner in the same way
+	// Create and List are, so a note of another owner answers ErrNoteNotFound -
+	// the same signal a note that does not exist gives, and never a different
+	// one. Only the flag is written; the label and the creation time are the
+	// note's own, and they come back as the row holds them.
+	UpdateDone(ctx context.Context, owner, id string, done bool) (Note, error)
 }
 
 // Authenticator turns a bearer token into the owner's subject, or refuses it.

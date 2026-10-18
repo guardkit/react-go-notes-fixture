@@ -339,14 +339,17 @@ func TestDeliveredListResponseValidatesAgainstTheContract(t *testing.T) {
 // the notes table. The check finds them itself when it runs, seeded by the read
 // path in store.go, and walks the whole repository rather than a list written
 // down by hand: any member that reads note columns must read the done column
-// too, and any member that writes a note must leave the flag to the column
-// default of 0003_add_done.sql rather than take one from a caller. Finding no
-// member at all is a failure, never a silent pass.
+// too, any member that adds a note must leave the flag to the column default of
+// 0003_add_done.sql rather than take one from a caller, and any member that
+// updates a note must set the flag and nothing else, scope the row by id and
+// owner together, and read the whole note back. Finding no member at all is a
+// failure, never a silent pass.
 func TestEveryNoteReadFromTheNotesTableCarriesTheDoneColumn(t *testing.T) {
 	root := filepath.Clean(notesSetRoot)
 	members := []string{}
 	problems := []string{}
 	reads, writes, storeReads, storeWrites := 0, 0, 0, 0
+	updates, storeUpdates := 0, 0
 
 	walkErr := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -388,6 +391,39 @@ func TestEveryNoteReadFromTheNotesTableCarriesTheDoneColumn(t *testing.T) {
 				// The statement is the quoted SQL, so what follows its closing
 				// quote is the surrounding code, not columns.
 				returning = strings.Split(returning, "\"")[0]
+				if notesUpdateRow.MatchString(line) {
+					// An update exists to set the flag, so its rule is the other
+					// one: the statement sets the done column and nothing else,
+					// picks the row by id and owner together so another owner's
+					// note is never its row, and hands the whole note back.
+					updates++
+					if filepath.Base(path) == "store.go" {
+						storeUpdates++
+					}
+					set, where := notesAssignment(before)
+					for _, column := range []string{"label", "created_at", "owner_sub", "id"} {
+						if notesColumns(set, column) {
+							problems = append(problems, at+" writes the "+column+" column of a note row, so the update mutates more than the done flag")
+						}
+					}
+					if !notesColumns(set, "done") {
+						problems = append(problems, at+" updates a note row without setting the done column, so the flag is never written")
+					}
+					for _, column := range []string{"id", "owner_sub"} {
+						if !notesColumns(where, column) {
+							problems = append(problems, at+" updates a note row without scoping it by "+column+", so a note the caller does not own could be changed")
+						}
+					}
+					if !hasReturning {
+						problems = append(problems, at+" updates a note row without RETURNING, so the caller never sees the row it changed")
+					}
+					for _, column := range []string{"id", "label", "created_at", "done"} {
+						if !notesColumns(returning, column) {
+							problems = append(problems, at+" hands back "+strings.TrimSpace(returning)+" without the "+column+" column, so the updated note is answered incomplete")
+						}
+					}
+					continue
+				}
 				if notesColumns(before, "done") {
 					problems = append(problems, at+" writes a note while naming the done column before RETURNING, so the flag is taken from the caller instead of the column default")
 				}
@@ -435,6 +471,12 @@ func TestEveryNoteReadFromTheNotesTableCarriesTheDoneColumn(t *testing.T) {
 	if storeReads == 0 || storeWrites == 0 {
 		t.Fatalf("the read path in store.go no longer reads (reads %d, writes %d) the owner's rows, so this check had nothing to cover", storeReads, storeWrites)
 	}
+	if updates == 0 {
+		t.Fatalf("the notes set %v holds no update of a note row to check", members)
+	}
+	if storeUpdates == 0 {
+		t.Fatalf("the update path in store.go no longer updates (updates %d) the owner's rows, so this check had nothing to cover", storeUpdates)
+	}
 	for _, problem := range problems {
 		t.Error(problem)
 	}
@@ -459,6 +501,27 @@ var notesTableReference = regexp.MustCompile(`(?i)\b(?:from|into|update)\s+notes
 // notesWrite separates the statements that add rows from the ones that read
 // them, so each is held to its own rule about the flag.
 var notesWrite = regexp.MustCompile(`(?i)\b(?:insert\s+into|update)\s+notes\b`)
+
+// notesUpdateRow separates the statement that changes a row from the one that
+// adds it: adding a note leaves the flag to the column default, while changing
+// one is exactly how the flag is written.
+var notesUpdateRow = regexp.MustCompile(`(?i)\bupdate\s+notes\b`)
+
+// notesAssignment splits an update into the columns it writes and the clause
+// that decides which row it writes them to, so the flag it mutates and the
+// scoping of the row are checked separately.
+func notesAssignment(statement string) (set, where string) {
+	lowered := strings.ToLower(statement)
+	start := strings.Index(lowered, " set ")
+	if start < 0 {
+		return "", lowered
+	}
+	end := strings.Index(lowered, " where ")
+	if end < start {
+		return lowered[start+len(" set "):], ""
+	}
+	return lowered[start+len(" set ") : end], lowered[end:]
+}
 
 // notesSelectList is the column list of the note read that starts just in front
 // of the reference to the table. The greedy prefix anchors it at the last
