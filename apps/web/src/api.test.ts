@@ -5,12 +5,14 @@ import {
   parseNote,
   parseNoteList,
   SignInRequiredError,
+  type Note,
 } from "./api";
 
 const note = {
   id: "9007199254740993",
   label: "hello",
   createdAt: "2026-10-12T09:30:00Z",
+  done: false,
 };
 
 describe("API boundary", () => {
@@ -24,7 +26,40 @@ describe("API boundary", () => {
     expect(() => parseNote({ ...note, createdAt: "yesterday" })).toThrow(
       "Invalid API response",
     );
+    // done is a required boolean of the contract's note object, so a note
+    // answered without one — or with anything but true or false — is not a note.
+    const noteWithoutDone: Record<string, unknown> = { ...note };
+    delete noteWithoutDone.done;
+    expect(() => parseNote(noteWithoutDone)).toThrow("Invalid API response");
+    expect(() => parseNote({ ...note, done: null })).toThrow(
+      "Invalid API response",
+    );
+    expect(() => parseNote({ ...note, done: "yes" })).toThrow(
+      "Invalid API response",
+    );
+    expect(() => parseNoteList([noteWithoutDone])).toThrow(
+      "Invalid API response",
+    );
     expect(() => parseNoteList([note])).toThrow("Invalid API response");
+  });
+
+  it("keeps the completion flag of a well-formed note", () => {
+    expect(parseNote(note)).toEqual(note);
+    expect(parseNote({ ...note, done: true }).done).toBe(true);
+  });
+
+  it("types the note with a completion flag that is always present", () => {
+    // The note type is generated from contract/openapi.yaml, so the keys the
+    // compiler demands are the contract's `required` list: an optional done
+    // would drop out of this union and fail `npm run typecheck`, which is how
+    // a client built from the contract reads the flag unconditionally.
+    type RequiredKeys<T> = {
+      [K in keyof T]-?: undefined extends T[K] ? never : K;
+    }[keyof T];
+    const required: RequiredKeys<Note>[] = ["id", "label", "createdAt", "done"];
+    expect(new Set(required)).toEqual(
+      new Set(["id", "label", "createdAt", "done"]),
+    );
   });
 
   it("posts JSON with the bearer token and keeps the string ID", async () => {
