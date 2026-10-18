@@ -1,0 +1,67 @@
+feature: notes-list-done-flag-visibility
+generated: "2026-07-09T14:32:00Z"
+scenarios:
+  - title: "Every note row reflects its done flag"
+    tags: ["@key-example", "@smoke"]
+    sentence: "When the notes list is shown, each note row displays its own done flag so done notes read as done and not-done notes read as not done."
+  - title: "Showing the done flag does not alter other list behaviour"
+    tags: ["@key-example"]
+    sentence: "Adding the done flag to each row leaves the note titles, the list order, and all other list behaviour exactly as they were."
+  - title: "Done notes are visually distinct from not-done notes"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A done note's row looks clearly different from a not-done note's row so the two states can be told apart in one glance."
+  - title: "Done state is conveyed by a non-color cue as well as styling"
+    tags: ["@key-example"]
+    sentence: "A done note is marked with a cue that does not rely on color, so people who cannot see the styling difference can still tell it is done."
+  - title: "A non-color textual cue conveys the done state alongside styling"
+    tags: ["@key-example"]
+    sentence: "The done marker is rendered as readable text that carries the done state, so assistive technology and text-only displays can still announce that the note is done."
+  - title: "Screen reader announces the done state of each row"
+    tags: ["@key-example"]
+    sentence: "A screen-reader user moving through the notes list hears whether each note is done or not done."
+  - title: "Rows render in the not-done presentation when the flag is not set"
+    tags: ["@boundary"]
+    sentence: "A note whose done flag is false or simply unset is shown in the ordinary not-done style."
+  - title: "A note whose done flag is set renders in the done presentation"
+    tags: ["@boundary"]
+    sentence: "A note whose done flag is true is shown in the done style."
+  - title: "Not-done rows carry no done cue"
+    tags: ["@boundary"]
+    sentence: "A not-done note's row shows no done marker and keeps the standard not-done look, so the two states never blur together."
+  - title: "A list of only not-done notes still shows each flag"
+    tags: ["@negative"]
+    sentence: "Even when every note is not done, each row still shows its not-done state and no note is dropped from the list."
+  - title: "The done treatment is never applied to a not-done note"
+    tags: ["@negative"]
+    sentence: "A note that is not done never gets the done styling or done marker by mistake."
+  - title: "Announced done state stays in sync when the list re-renders"
+    tags: ["@edge-case"]
+    sentence: "If a note's done flag changes and the list redraws, the state a screen reader announces matches the note's current flag."
+assumptions:
+  - id: "ASSUM-001" 
+    text: "The notes list already receives the done flag in the data it fetches, so no API change is required"
+    basis: "Input ASM-004 (medium) is not settled by the request or code; the alternative is that the list's data fetch/API must be extended to include the done flag before FEAT-PO-001"
+  - id: "ASSUM-002"
+    text: "The web app has a single notes list view where all notes are displayed together, and the change applies there"
+    basis: "Input ASM-002 (medium) is not settled; the alternative is that multiple list surfaces (search results, filters, archives) exist and the done marking must be specified and applied per surface"
+  - id: "ASSUM-003"
+    text: "The done treatment is a combination of a 'Done' textual label and visually differentiated row styling"
+    basis: "Open question in the input lists strikethrough, dimmed row, checkmark icon, 'Done' badge, or a combination; none is chosen by the request, so a 'Done' textual label plus differentiated styling is proposed against the alternative of a single cue"
+  - id: "ASSUM-004"
+    text: "Done notes remain in their current list position; no reordering or grouping of done notes is applied"
+    basis: "Open question in the input asks whether done notes stay in place or are reordered/grouped; the request's 'without altering ordering' constraint supports keeping position, against the alternative of grouping done notes"
+  - id: "ASSUM-005"
+    text: "A note whose done flag is unset or null is treated as not-done and rendered in the not-done presentation"
+    basis: "Open question in the input asks whether unset/null is treated as not-done or shown as unknown; FEAT-PO-001's default-to-not-done wording supports not-done, against the alternative of a distinct unknown presentation"
+  - id: "ASSUM-006"
+    text: "The non-color done cue is a textual 'Done' label rather than an icon"
+    basis: "FEAT-PO-003 permits a textual done label or an icon; the 'Done' textual label is proposed against the alternative of an icon"
+  - id: "ASSUM-007"
+    text: "The done state is exposed to assistive technology via an accessible label or ARIA state on the row or its done indicator"
+    basis: "FEAT-PO-004 gives 'e.g., an accessible label or ARIA state' as examples without mandating one; the accessible label is proposed against the alternative of an ARIA state attribute"
+  - id: "ASSUM-008"
+    text: "The done flag can change while the list is open, causing a re-render, even though toggling the flag is out of scope for this request"
+    basis: "FEAT-PO-004 requires the announced state to stay in sync 'when the flag changes and the list re-renders', while the input scopes toggling out; the alternative is that no in-session re-render occurs and the sync requirement is vacuous"
+  - id: "ASSUM-009"
+    text: "The done flag is a boolean-like completed state already present on the note model and is not redefined by this work"
+    basis: "Input ASM-001 (high) states the flag already exists; recorded as deferred because the request does not itself confirm the model shape, and the alternative is that the flag's representation needs definition"
