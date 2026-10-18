@@ -1,0 +1,82 @@
+id: FEAT-9018
+name: "Notes Done Flag"
+description: "Add a done flag to notes: a new migration adds a done column that is false by default, and GET /api/notes returns each note's done flag, with the contract and the generated web types updated to match"
+created: "2026-07-09T14:32:00Z"
+status: planned
+complexity: 5
+estimated_tasks: 3
+feature_files:
+  - features/notes-done-flag/notes-done-flag.feature
+
+scenario_owners:
+  "The notes list reports done false for all notes after the migration": TASK-9018-002
+  "The notes list reports the done flag for every note": TASK-9018-002
+  "A note that has never been marked complete is returned with done false": TASK-9018-002
+  "Existing note fields and the endpoint path are unchanged": TASK-9018-002
+  "A client built from the contract treats done as always present": TASK-9018-003
+  "A note marked complete is returned with done true": TASK-9018-002
+  "The notes list never returns a non-boolean done value": TASK-9018-002
+  "The notes list returns note fields the existing client consumes": TASK-9018-002
+
+tasks:
+  - id: TASK-9018-001
+    name: "Add the done column migration"
+    file_path: "tasks/backlog/notes-done-flag/TASK-9018-001-add-done-column-migration.md"
+    complexity: 2
+    dependencies: []
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 30
+
+  - id: TASK-9018-002
+    name: "Return the done flag from GET /api/notes"
+    file_path: "tasks/backlog/notes-done-flag/TASK-9018-002-return-done-flag-from-list.md"
+    complexity: 5
+    dependencies:
+      - TASK-9018-001
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 90
+
+  - id: TASK-9018-003
+    name: "Update the contract and regenerate the web types"
+    file_path: "tasks/backlog/notes-done-flag/TASK-9018-003-update-contract-and-web-types.md"
+    complexity: 3
+    dependencies:
+      - TASK-9018-002
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 45
+
+orchestration:
+  parallel_groups:
+    - - TASK-9018-001
+    - - TASK-9018-002
+    - - TASK-9018-003
+  estimated_duration_minutes: 165
+  recommended_parallel: 1
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The notes list reports done false for all notes after the migration":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The notes list reports the done flag for every note":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note that has never been marked complete is returned with done false":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Existing note fields and the endpoint path are unchanged":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A client built from the contract treats done as always present":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A note marked complete is returned with done true":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The notes list never returns a non-boolean done value":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The notes list returns note fields the existing client consumes":
+    verifier: "exam"

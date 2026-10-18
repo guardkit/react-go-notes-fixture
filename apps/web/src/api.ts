@@ -28,11 +28,18 @@ export function parseNote(value: unknown): Note {
     typeof value.label !== "string" ||
     !("createdAt" in value) ||
     typeof value.createdAt !== "string" ||
-    Number.isNaN(Date.parse(value.createdAt))
+    Number.isNaN(Date.parse(value.createdAt)) ||
+    !("done" in value) ||
+    typeof value.done !== "boolean"
   ) {
     throw new Error("Invalid API response");
   }
-  return { id: value.id, label: value.label, createdAt: value.createdAt };
+  return {
+    id: value.id,
+    label: value.label,
+    createdAt: value.createdAt,
+    done: value.done,
+  };
 }
 
 export function parseNoteList(value: unknown): Note[] {

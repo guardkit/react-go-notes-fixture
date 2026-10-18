@@ -1,0 +1,58 @@
+feature: Notes Done Flag
+generated: '2026-07-09T14:32:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: The notes list reports done false for all notes after the migration
+  assumption: Notes are persisted in a relational database addressed by a single notes
+    table, so 'a new migration' means a schema change to that table
+  confidence: low
+  basis: The request says 'a new migration adds a done column' (relational-migration
+    wording) and the README shows apps/api/migrations 0001/0002 against a notes table;
+    the alternative is a document/key-value store where the change would be a schemaless
+    per-record defaulting rollout. Not stated explicitly in the request.
+  human_response: deferred
+- id: ASSUM-002
+  scenario: The notes list reports the done flag for every note
+  assumption: The notes list endpoint GET /api/notes already exists and returns a
+    collection of note objects; this change adds a field rather than introducing the
+    endpoint
+  confidence: low
+  basis: The README and handler.go show GET /api/notes already serving a signed-in
+    owner's notes, so the change is a field addition; the alternative is that the
+    endpoint does not exist and the epic would cover the full list endpoint (pagination,
+    auth, empty-collection semantics). The request does not restate the endpoint's
+    existence.
+  human_response: deferred
+- id: ASSUM-003
+  scenario: A note marked complete is returned with done true
+  assumption: done is a two-valued boolean completion state, not a richer lifecycle
+    such as a timestamp, enum, or per-user acknowledgement
+  confidence: low
+  basis: The request says 'a done flag ... false by default' and the contract declares
+    a required boolean, implying two-valued state; the alternative is a richer model
+    (completion timestamp/enum) that would change the column type, the contract property
+    type and the generated type. The request does not enumerate the lifecycle.
+  human_response: deferred
+- id: ASSUM-004
+  scenario: A note marked complete is returned with done true
+  assumption: 'This change is read-only with respect to the flag: no client-facing
+    write path for setting done is in scope'
+  confidence: low
+  basis: The request names only the migration default and the GET response, so no
+    mutation is proposed; the alternative is that a write path (e.g. PATCH /api/notes/{id}
+    or a POST body field) is expected, in which case the flag would be permanently
+    false for every note and the feature non-functional. The request does not state
+    whether a write path is in scope.
+  human_response: deferred
+- id: ASSUM-005
+  scenario: Existing note fields and the endpoint path are unchanged
+  assumption: 'Adding a field to the response is backward compatible: existing API
+    consumers tolerate unknown properties and do not perform strict schema rejection'
+  confidence: low
+  basis: The request calls the change backward compatible for clients that ignore
+    the new field, implying tolerant consumers; the alternative is strict clients
+    that break on the new field, forcing a versioned endpoint or a coordinated client-first
+    rollout. The request does not enumerate existing consumers.
+  human_response: deferred
