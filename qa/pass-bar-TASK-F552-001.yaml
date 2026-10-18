@@ -1,0 +1,28 @@
+format_version: '2.0'
+task_id: TASK-F552-001
+registered_at:
+  sha: fa2075462b756a290ce59495948051d4c086134f
+  date: '2026-10-18'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-done-flag-api-AC-001
+  text: Owner sets a note's done flag to true
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-api-AC-002
+  text: Owner sets a note's done flag to false
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-api-AC-003
+  text: Re-sending the same done value yields the same updated note
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation
