@@ -43,7 +43,7 @@ const doneTitleStyle: CSSProperties = {
   // muted, so a done row reads differently from an open one.
   fontWeight: 400,
   color: "#595959",
-  // mutated: no row-level treatment
+  textDecoration: "line-through",
 };
 
 const rowStyle: CSSProperties = {

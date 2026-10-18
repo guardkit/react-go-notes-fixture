@@ -87,6 +87,19 @@ type RowView = {
   titleBox: { x: number; y: number; width: number; height: number };
 };
 
+// The area one element occupies on the page, as the browser reported it.
+type Box = { x: number; y: number; width: number; height: number };
+
+// The area one element occupies on the page, or a failure naming the element
+// that was never painted: a missing box is a finding, not a null to compare.
+async function paintedBox(target: Locator, what: string): Promise<Box> {
+  const box = await target.boundingBox();
+  if (!box) {
+    throw new Error(`${what} is not painted`);
+  }
+  return box;
+}
+
 async function viewRow(page: Page, label: string): Promise<RowView> {
   const row = noteRow(page, label);
   await expect(row, `one row shows "${label}"`).toHaveCount(1);
@@ -388,33 +401,30 @@ test("the indicator holds one position across every row, and a mixed list reads 
         ),
       );
     expect(leads, "the status cell leads its row").toBe(true);
-    const box = await indicator.boundingBox();
-    expect(box, "the status cell is painted").not.toBeNull();
-    const rowBox = await row.boundingBox();
-    const titleBox = await titleCell(row).boundingBox();
-    expect(rowBox, "the row is painted").not.toBeNull();
-    expect(titleBox, "the title is painted").not.toBeNull();
+    const box = await paintedBox(indicator, "the status cell");
+    const rowBox = await paintedBox(row, "the row");
+    const titleBox = await paintedBox(titleCell(row), "the title");
     // The status cell sits at the row's own left edge, on the same line as the
     // title and before it: one column of statuses, read beside the title it
     // belongs to rather than stacked under it or pushed after it.
     expect(
-      Math.abs(box.x - (rowBox?.x ?? Number.NaN)),
+      Math.abs(box.x - rowBox.x),
       "the status cell starts where the row starts",
     ).toBeLessThanOrEqual(1);
     expect(
-      Math.abs(box.y - (titleBox?.y ?? Number.NaN)),
+      Math.abs(box.y - titleBox.y),
       "the status cell meets the eye on the title's own line",
     ).toBeLessThanOrEqual(4);
     expect(
       box.x,
       "the status cell is read before the title, not after it",
-    ).toBeLessThanOrEqual((titleBox?.x ?? 0) + 1);
+    ).toBeLessThanOrEqual(titleBox.x + 1);
     shown.push({
       title: ((await titleCell(row).textContent()) ?? "")
         .replace(/\s+/g, " ")
         .trim(),
       word: await statusWord(row),
-      left: box?.x ?? Number.NaN,
+      left: box.x,
     });
   }
 

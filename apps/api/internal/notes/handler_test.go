@@ -830,6 +830,7 @@ var listingShapeMembers = map[string]struct {
 	"apps/web/src/api-types.ts":          {coveredBy: "npm run contract:check on the types regenerated from the contract, which TASK-9018-003 regenerates"},
 	"apps/web/src/api.ts":                {coveredBy: "apps/web/src/api.test.ts, the web reader of a listed note"},
 	"apps/web/src/App.tsx":               {coveredBy: "apps/web/src/App.test.tsx and tests/e2e/specs/journey.spec.ts, which render a listed note through the web client"},
+	"tests/e2e/specs/helpers.ts":         {coveredBy: "tests/e2e/specs/done-indicator.spec.ts, which reads the flag off every member of the collection the app was handed and asserts each row's status word against it", mustCarryDone: true},
 }
 
 // The each-note sweep discovers the response-shaping members itself when it
