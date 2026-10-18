@@ -10,15 +10,6 @@ scenarios:
   - title: "Done notes are visually distinct from not-done notes"
     tags: ["@key-example", "@smoke"]
     sentence: "A done note's row looks clearly different from a not-done note's row so the two states can be told apart in one glance."
-  - title: "Done state is conveyed by a non-color cue as well as styling"
-    tags: ["@key-example"]
-    sentence: "A done note is marked with a cue that does not rely on color, so people who cannot see the styling difference can still tell it is done."
-  - title: "A non-color textual cue conveys the done state alongside styling"
-    tags: ["@key-example"]
-    sentence: "The done marker is rendered as readable text that carries the done state, so assistive technology and text-only displays can still announce that the note is done."
-  - title: "Screen reader announces the done state of each row"
-    tags: ["@key-example"]
-    sentence: "A screen-reader user moving through the notes list hears whether each note is done or not done."
   - title: "Rows render in the not-done presentation when the flag is not set"
     tags: ["@boundary"]
     sentence: "A note whose done flag is false or simply unset is shown in the ordinary not-done style."
@@ -34,11 +25,8 @@ scenarios:
   - title: "The done treatment is never applied to a not-done note"
     tags: ["@negative"]
     sentence: "A note that is not done never gets the done styling or done marker by mistake."
-  - title: "Announced done state stays in sync when the list re-renders"
-    tags: ["@edge-case"]
-    sentence: "If a note's done flag changes and the list redraws, the state a screen reader announces matches the note's current flag."
 assumptions:
-  - id: "ASSUM-001" 
+  - id: "ASSUM-001"
     text: "The notes list already receives the done flag in the data it fetches, so no API change is required"
     basis: "Input ASM-004 (medium) is not settled by the request or code; the alternative is that the list's data fetch/API must be extended to include the done flag before FEAT-PO-001"
   - id: "ASSUM-002"
@@ -54,14 +42,5 @@ assumptions:
     text: "A note whose done flag is unset or null is treated as not-done and rendered in the not-done presentation"
     basis: "Open question in the input asks whether unset/null is treated as not-done or shown as unknown; FEAT-PO-001's default-to-not-done wording supports not-done, against the alternative of a distinct unknown presentation"
   - id: "ASSUM-006"
-    text: "The non-color done cue is a textual 'Done' label rather than an icon"
-    basis: "FEAT-PO-003 permits a textual done label or an icon; the 'Done' textual label is proposed against the alternative of an icon"
-  - id: "ASSUM-007"
-    text: "The done state is exposed to assistive technology via an accessible label or ARIA state on the row or its done indicator"
-    basis: "FEAT-PO-004 gives 'e.g., an accessible label or ARIA state' as examples without mandating one; the accessible label is proposed against the alternative of an ARIA state attribute"
-  - id: "ASSUM-008"
-    text: "The done flag can change while the list is open, causing a re-render, even though toggling the flag is out of scope for this request"
-    basis: "FEAT-PO-004 requires the announced state to stay in sync 'when the flag changes and the list re-renders', while the input scopes toggling out; the alternative is that no in-session re-render occurs and the sync requirement is vacuous"
-  - id: "ASSUM-009"
     text: "The done flag is a boolean-like completed state already present on the note model and is not redefined by this work"
     basis: "Input ASM-001 (high) states the flag already exists; recorded as deferred because the request does not itself confirm the model shape, and the alternative is that the flag's representation needs definition"

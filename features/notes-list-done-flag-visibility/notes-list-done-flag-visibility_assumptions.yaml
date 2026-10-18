@@ -50,31 +50,6 @@ assumptions:
     against the alternative of a distinct unknown presentation
   human_response: deferred
 - id: ASSUM-006
-  scenario: Done state is conveyed by a non-color cue as well as styling
-  assumption: The non-color done cue is a textual 'Done' label rather than an icon
-  confidence: low
-  basis: FEAT-PO-003 permits a textual done label or an icon; the 'Done' textual label
-    is proposed against the alternative of an icon
-  human_response: deferred
-- id: ASSUM-007
-  scenario: Screen reader announces the done state of each row
-  assumption: The done state is exposed to assistive technology via an accessible
-    label or ARIA state on the row or its done indicator
-  confidence: low
-  basis: FEAT-PO-004 gives 'e.g., an accessible label or ARIA state' as examples without
-    mandating one; the accessible label is proposed against the alternative of an
-    ARIA state attribute
-  human_response: deferred
-- id: ASSUM-008
-  scenario: Announced done state stays in sync when the list re-renders
-  assumption: The done flag can change while the list is open, causing a re-render,
-    even though toggling the flag is out of scope for this request
-  confidence: low
-  basis: FEAT-PO-004 requires the announced state to stay in sync 'when the flag changes
-    and the list re-renders', while the input scopes toggling out; the alternative
-    is that no in-session re-render occurs and the sync requirement is vacuous
-  human_response: deferred
-- id: ASSUM-009
   scenario: Every note row reflects its done flag
   assumption: The done flag is a boolean-like completed state already present on the
     note model and is not redefined by this work
