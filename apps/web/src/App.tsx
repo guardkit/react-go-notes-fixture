@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import type { User, UserManager } from "oidc-client-ts";
 import { createNote, listNotes, SignInRequiredError, type Note } from "./api";
 import type { RuntimeConfig } from "./config";
@@ -8,6 +8,49 @@ type Props = {
   manager: UserManager;
   initialUser: User | null;
   initialError: string;
+};
+
+// The done flag arrives on the list payload itself, so the row reads it and
+// never writes it back: the list is read-only with respect to the flag. A note
+// answered without one reads as not done, never as an unknown state.
+function isDone(note: Note): boolean {
+  return note.done === true;
+}
+
+// One status cell per row, in the same leading slot on every row: the flag of
+// one note can never be read where another note's title is read, and a column
+// of statuses is scannable. It cannot shrink or wrap, so the wording survives
+// whole at the narrowest supported viewport; the row wraps instead.
+const statusCellStyle: CSSProperties = {
+  minWidth: "5.5em",
+  flexShrink: 0,
+  whiteSpace: "nowrap",
+  fontWeight: 700,
+};
+
+// The title keeps its own line box and wraps rather than being clipped, so the
+// indicator sits beside it instead of displacing or truncating it.
+const openTitleStyle: CSSProperties = {
+  flex: "1 1 auto",
+  minWidth: 0,
+  overflowWrap: "anywhere",
+  fontWeight: 600,
+};
+
+const doneTitleStyle: CSSProperties = {
+  ...openTitleStyle,
+  // Two channels beyond colour: the title is struck through and its weight is
+  // muted, so a done row reads differently from an open one.
+  fontWeight: 400,
+  color: "#595959",
+  textDecoration: "line-through",
+};
+
+const rowStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "baseline",
+  gap: "0.5em",
 };
 
 export function App({ config, manager, initialUser, initialError }: Props) {
@@ -115,9 +158,20 @@ export function App({ config, manager, initialUser, initialError }: Props) {
           </form>
           <p data-testid="notes-count">{notes.length} notes</p>
           <ul aria-label="Your notes">
-            {notes.map((note) => (
-              <li key={note.id}>{note.label}</li>
-            ))}
+            {notes.map((note) => {
+              const done = isDone(note);
+              return (
+                <li key={note.id} style={rowStyle}>
+                  <span style={statusCellStyle}>
+                    <span aria-hidden="true">{done ? "✓" : "○"}</span>{" "}
+                    {done ? "Done" : "Not done"}
+                  </span>
+                  <span style={done ? doneTitleStyle : openTitleStyle}>
+                    {note.label}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
