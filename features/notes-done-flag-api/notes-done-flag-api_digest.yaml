@@ -1,0 +1,58 @@
+feature: notes-done-flag-api
+generated: "2026-07-09T14:32:00Z"
+endpoint:
+  method: PATCH
+  path: /api/notes/{id}
+scenarios:
+  - title: "Owner sets a note's done flag to true"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A signed-in owner marks their own note as done and receives the updated note back with the done flag set to true."
+  - title: "Owner sets a note's done flag to false"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A signed-in owner marks their own note as not done and receives the updated note back with the done flag set to false."
+  - title: "Re-sending the same done value yields the same updated note"
+    tags: ["@key-example"]
+    sentence: "Sending the same done value twice in a row leaves the note in the same state and returns the same updated note each time."
+  - title: "The done flag accepts each boolean value"
+    tags: ["@boundary"]
+    sentence: "Setting the done flag to either true or false is accepted and reflected in the returned note."
+  - title: "A non-boolean done value is rejected"
+    tags: ["@boundary", "@negative"]
+    sentence: "Sending a done value that is not true or false is refused and leaves the note's done flag unchanged."
+  - title: "A note id that does not exist is answered with 404"
+    tags: ["@negative"]
+    sentence: "Trying to update a note id that matches no note is answered with not-found and changes nothing."
+  - title: "A note belonging to another user is answered with 404"
+    tags: ["@negative"]
+    sentence: "Trying to update someone else's note is answered with not-found rather than forbidden, so the note's existence is not revealed."
+  - title: "The missing-note and foreign-note responses are indistinguishable"
+    tags: ["@negative"]
+    sentence: "A request for a nonexistent note and a request for another user's note produce the same not-found response shape, so a caller cannot tell the two apart."
+  - title: "An unauthenticated request is refused before any note mutation"
+    tags: ["@negative"]
+    sentence: "A PATCH request with no signed-in session is refused as sign-in required and does not change any note."
+  - title: "A syntactically malformed note id is answered with 404"
+    tags: ["@edge-case"]
+    sentence: "A note id that is not well-formed is treated as not-found and changes nothing."
+  - title: "The updated note representation carries its identity and new done state"
+    tags: ["@edge-case"]
+    sentence: "The response to a successful update includes the note's own id and its new done state and nothing belonging to other notes."
+assumptions:
+  - id: ASSUM-001
+    text: "A non-boolean done value in the request body is rejected with a 400 validation error"
+    basis: "The input states the done flag accepts only boolean true/false but does not state the status for invalid body values; the alternative considered was 422 Unprocessable Entity"
+  - id: ASSUM-002
+    text: "An unauthenticated PATCH request is answered with 401 sign-in required"
+    basis: "The input requires a signed-in owner but does not state the status for a missing session; the alternatives considered were 401 (consistent with the existing GET /api/notes 401 SignInRequired) and 404 (to avoid leaking endpoint existence)"
+  - id: ASSUM-003
+    text: "A syntactically malformed {id} is answered with 404 rather than a validation error"
+    basis: "The input does not constrain the {id} format or define behaviour for malformed ids; the alternatives considered were 404 (treat as not-found) and 400 (treat as malformed input)"
+  - id: ASSUM-004
+    text: "The updated-note response includes at minimum the note's id and done state"
+    basis: "The input says the response returns 'the updated note' but does not enumerate the full field set; the alternatives considered were a minimal {id, done} body and a full note representation including label and created-at"
+  - id: ASSUM-005
+    text: "A successful update returns HTTP 200 with the updated note as the JSON response body"
+    basis: "The input states the endpoint returns the updated note but does not state the status code; the alternatives considered were 200 with a body (chosen, consistent with the existing GET /api/notes 200 pattern) and 204 No Content"
+  - id: ASSUM-006
+    text: "Note ids are opaque strings; no specific format (integer, UUID) is enforced"
+    basis: "The input does not constrain the {id} format; the alternatives considered were opaque string ids (chosen, consistent with the existing handler's string IDs such as \"4\", \"3\") and UUID or integer ids"
