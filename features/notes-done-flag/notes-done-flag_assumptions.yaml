@@ -4,7 +4,7 @@ stack: generic
 review_required: true
 assumptions:
 - id: ASSUM-001
-  scenario: Applying the migration adds a done column defaulting to false
+  scenario: The notes list reports done false for all notes after the migration
   assumption: Notes are persisted in a relational database addressed by a single notes
     table, so 'a new migration' means a schema change to that table
   confidence: low
@@ -15,8 +15,9 @@ assumptions:
   human_response: deferred
 - id: ASSUM-002
   scenario: The notes list reports the done flag for every note
-  assumption: GET /api/notes already exists and returns a collection of note objects;
-    this change adds a field rather than introducing the endpoint
+  assumption: The notes list endpoint GET /api/notes already exists and returns a
+    collection of note objects; this change adds a field rather than introducing the
+    endpoint
   confidence: low
   basis: The README and handler.go show GET /api/notes already serving a signed-in
     owner's notes, so the change is a field addition; the alternative is that the
@@ -25,18 +26,6 @@ assumptions:
     existence.
   human_response: deferred
 - id: ASSUM-003
-  scenario: The generated web note type carries the done boolean
-  assumption: The web types are machine-generated from the API contract by an existing
-    codegen step, so updating the contract and re-running codegen satisfies 'generated
-    web types updated to match'
-  confidence: low
-  basis: The README states apps/web/src/api-types.ts is generated from contract/openapi.yaml
-    via npm run contract:generate and committed, so codegen is the mechanism; the
-    alternative is hand-maintained types, which would make FEAT-PO-004 a manual edit
-    and make the 'regeneration is a no-op' constraint inapplicable. The request does
-    not name the codegen step.
-  human_response: deferred
-- id: ASSUM-004
   scenario: A note marked complete is returned with done true
   assumption: done is a two-valued boolean completion state, not a richer lifecycle
     such as a timestamp, enum, or per-user acknowledgement
@@ -46,7 +35,7 @@ assumptions:
     (completion timestamp/enum) that would change the column type, the contract property
     type and the generated type. The request does not enumerate the lifecycle.
   human_response: deferred
-- id: ASSUM-005
+- id: ASSUM-004
   scenario: A note marked complete is returned with done true
   assumption: 'This change is read-only with respect to the flag: no client-facing
     write path for setting done is in scope'
@@ -57,18 +46,7 @@ assumptions:
     false for every note and the feature non-functional. The request does not state
     whether a write path is in scope.
   human_response: deferred
-- id: ASSUM-006
-  scenario: Applying the migration adds a done column defaulting to false
-  assumption: The notes table is small enough that adding a non-nullable column with
-    a constant default can be done in a single straightforward migration without an
-    online/lock-aware strategy
-  confidence: low
-  basis: The request asks for 'a new migration' as a single ordered schema change,
-    implying a straightforward add; the alternative is a large table where the add
-    could lock writes and require a two-phase add-default-backfill approach. The request
-    does not state the table size.
-  human_response: deferred
-- id: ASSUM-007
+- id: ASSUM-005
   scenario: Existing note fields and the endpoint path are unchanged
   assumption: 'Adding a field to the response is backward compatible: existing API
     consumers tolerate unknown properties and do not perform strict schema rejection'
@@ -77,16 +55,4 @@ assumptions:
     the new field, implying tolerant consumers; the alternative is strict clients
     that break on the new field, forcing a versioned endpoint or a coordinated client-first
     rollout. The request does not enumerate existing consumers.
-  human_response: deferred
-- id: ASSUM-008
-  scenario: The response payload validates against the updated contract
-  assumption: The contract and the generated web types are versioned and deployed
-    together with the API change, so no window exists where the deployed API and the
-    committed contract disagree
-  confidence: low
-  basis: The constraints say contract and generated web types must be updated in the
-    same change set, implying co-deployment; the alternative is independent release
-    of contract and types, which opens a drift window and would require the parity
-    gate to run in CI against both artefacts separately. The request does not state
-    the release cadence.
   human_response: deferred
