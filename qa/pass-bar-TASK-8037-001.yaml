@@ -1,0 +1,28 @@
+format_version: '2.0'
+task_id: TASK-8037-001
+registered_at:
+  sha: 50fbd3f4bab11e3cfcfeeb89ebb4ec2a2b864950
+  date: '2026-10-18'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-list-done-flag-visibility-AC-001
+  text: Every note row reflects its done flag
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-list-done-flag-visibility-AC-002
+  text: Showing the done flag does not alter other list behaviour
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-list-done-flag-visibility-AC-003
+  text: Done notes are visually distinct from not-done notes
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation
