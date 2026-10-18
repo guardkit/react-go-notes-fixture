@@ -1,11 +1,5 @@
-import {
-  expect,
-  test,
-  type Locator,
-  type Page,
-  type Response,
-} from "@playwright/test";
-import { signIn, signOut, testUser } from "./helpers";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import { ownerNotes, signIn, signOut, testUser } from "./helpers";
 
 // The summary region delivered by TASK-NLTC-001: the paragraph rendered
 // directly above the "Your notes" list, holding the size of the very same
@@ -23,21 +17,8 @@ async function displayedTotal(summary: Locator): Promise<number> {
 // Resolves with the size of the owner's own collection, counted from the very
 // /api/notes response the page asks for once it holds a token. Must be called
 // before the action that triggers the request.
-function ownerCollection(page: Page): Promise<number> {
-  return page
-    .waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        response.url().endsWith("/api/notes") &&
-        response.status() === 200,
-    )
-    .then(async (response: Response) => {
-      const body = (await response.json()) as { notes?: unknown };
-      expect(body.notes, "the API answers with a notes array").toBeInstanceOf(
-        Array,
-      );
-      return (body.notes as unknown[]).length;
-    });
+async function ownerCollection(page: Page): Promise<number> {
+  return (await ownerNotes(page)).length;
 }
 
 // Asserts the total is displayed above the notes list in the format "N notes",
