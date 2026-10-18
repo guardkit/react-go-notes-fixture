@@ -274,11 +274,16 @@ function uniqueLabel(testInfo: TestInfo, kind: string): string {
   return `toggle note ${testInfo.testId.slice(0, 8)}-${Date.now()} ${kind}`;
 }
 
+// The notes each test made through the app's own form, recorded as they are
+// made so the undo below can reach every one of them by title.
+const madeByTest = new Map<string, string[]>();
+
 // Signs in and makes each note through the app's own form, so the rows ticked
 // below are the rows the person's own flow put in the list - and so every one
 // of them starts not-done, the flag the column default gives a new note.
 async function signInAndCreate(
   page: Page,
+  testInfo: TestInfo,
   user: TestUser,
   labels: string[],
 ): Promise<void> {
@@ -290,6 +295,8 @@ async function signInAndCreate(
   for (const label of labels) {
     await createNote(page, label);
   }
+  const made = madeByTest.get(testInfo.testId) ?? [];
+  madeByTest.set(testInfo.testId, [...made, ...labels]);
 }
 
 // The list as the person sees it on a fresh load. Tokens live in memory, so the
@@ -347,6 +354,38 @@ async function restoreNotDone(page: Page, label: string): Promise<void> {
   await expectUntickedRow(page, label);
 }
 
+// The undo that runs whatever the test did next. Every test here ends with its
+// own restoreNotDone, but a test that fails on the way to it would otherwise
+// hand the next spec a done note nobody made - and this owner's whole collection
+// is read row by row by notes-done.spec.ts, which expects none. So the sweep of
+// every note this test made lives in a hook rather than in any one test body.
+// It is best effort by design: a cleanup must never become the failure a run
+// reports, and a page already signed out simply has no control left to press,
+// which is what the happy path looks like from here.
+test.afterEach(async ({ page }, testInfo) => {
+  const labels = madeByTest.get(testInfo.testId) ?? [];
+  madeByTest.delete(testInfo.testId);
+  for (const label of labels) {
+    try {
+      const control = doneControl(page, label);
+      if ((await control.count()) !== 1) continue;
+      if ((await control.getAttribute("aria-checked")) !== TICKED) continue;
+      const saved = page
+        .waitForResponse(isPatchToNote, { timeout: 15_000 })
+        .catch(() => null);
+      await control.click();
+      await saved;
+    } catch (cleanup) {
+      // The test already reported what went wrong; a cleanup that cannot reach
+      // the page would only bury that report under a second failure.
+      console.warn(
+        `cleanup could not put "${label}" back as not-done`,
+        cleanup,
+      );
+    }
+  }
+});
+
 async function attach(page: Page, testInfo: TestInfo, name: string) {
   const path = testInfo.outputPath(`${name}.png`);
   await page.screenshot({ path });
@@ -362,7 +401,7 @@ test("ticking a not-done note ticks the control and distinguishes its title as d
   const user = testUser();
   const label = uniqueLabel(testInfo, "tick");
   const openLabel = uniqueLabel(testInfo, "open");
-  await signInAndCreate(page, user, [label, openLabel]);
+  await signInAndCreate(page, testInfo, user, [label, openLabel]);
 
   // The premise: a note made through the form arrives not-done, and the control
   // is already there to be pressed - nothing has to be opened to reach it.
@@ -401,7 +440,7 @@ test("unticking a done note unticks the control and leaves the title undistingui
   const user = testUser();
   const label = uniqueLabel(testInfo, "untick");
   const openLabel = uniqueLabel(testInfo, "open");
-  await signInAndCreate(page, user, [label, openLabel]);
+  await signInAndCreate(page, testInfo, user, [label, openLabel]);
 
   // A done note in the list, made done by the control itself through the live
   // PATCH - no fixture, so the untick below reverses a state the server holds.
@@ -434,7 +473,7 @@ test("a ticked note is still ticked after the page is reloaded", async ({
 }, testInfo) => {
   const user = testUser();
   const label = uniqueLabel(testInfo, "reload-tick");
-  await signInAndCreate(page, user, [label]);
+  await signInAndCreate(page, testInfo, user, [label]);
 
   await expectUntickedRow(page, label);
   const saved = await clickControl(page, label);
@@ -482,7 +521,7 @@ test("an unticked note is still unticked after the page is reloaded", async ({
 }, testInfo) => {
   const user = testUser();
   const label = uniqueLabel(testInfo, "reload-untick");
-  await signInAndCreate(page, user, [label]);
+  await signInAndCreate(page, testInfo, user, [label]);
 
   // Tick it, then undo the tick: the reverse direction, saved both times.
   const tickedSave = await clickControl(page, label);
@@ -530,7 +569,7 @@ test("the completion control works from the list itself, with no note detail vie
 }, testInfo) => {
   const user = testUser();
   const label = uniqueLabel(testInfo, "in-place");
-  await signInAndCreate(page, user, [label]);
+  await signInAndCreate(page, testInfo, user, [label]);
 
   const url = page.url();
   const row = noteRow(page, label);
@@ -606,7 +645,7 @@ test("the completion control has exactly two states and reaches no third one", a
 }, testInfo) => {
   const user = testUser();
   const label = uniqueLabel(testInfo, "binary");
-  await signInAndCreate(page, user, [label]);
+  await signInAndCreate(page, testInfo, user, [label]);
 
   // One control per row, and it starts in one of the two states.
   const control = doneControl(page, label);
