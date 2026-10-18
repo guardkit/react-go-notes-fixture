@@ -1,0 +1,79 @@
+feature: notes-list-done-state-visibility
+generated: "2026-07-09T14:32:00Z"
+scenarios:
+  - title: "The notes list carries each note's done flag in its row data"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Loading the notes list gives every row that note's done flag up front, so the list can show completion without opening the note."
+  - title: "A done note shows its indicator in the done state"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A note marked done shows its status indicator in the done state."
+  - title: "An open note shows the indicator in the not-done state"
+    tags: ["@key-example"]
+    sentence: "A note that is not done still shows the indicator in the not-done state, rather than leaving the status blank."
+  - title: "A done note is visually distinguished from open notes by more than one channel"
+    tags: ["@key-example"]
+    sentence: "A done note stands out from open notes through more than one visual cue, so it reads as done even without relying on colour."
+  - title: "The done indicator appears in a consistent position across all rows"
+    tags: ["@key-example"]
+    sentence: "Every row shows the status indicator in the same spot next to the title, so the statuses line up in a scannable column."
+  - title: "A note with no explicit done value is treated as not done"
+    tags: ["@boundary"]
+    sentence: "A note that has no recorded done value is shown as not done instead of an unknown or broken state."
+  - title: "The row's done value reflects the note's current stored flag after a refresh"
+    tags: ["@boundary"]
+    sentence: "After a refresh, a row shows the note's current done status even if it was changed elsewhere in the app since the last load."
+  - title: "Paginated rows carry the done flag on every page"
+    tags: ["@boundary"]
+    sentence: "When the list spans several pages, every page's rows carry each note's done flag, not just the first page."
+  - title: "A mixed list renders done and open rows side by side without ambiguity"
+    tags: ["@boundary"]
+    sentence: "When done and open notes appear together, each row is clearly either done or not done with no confusion about which is which."
+  - title: "Viewing the list does not mutate any note's done flag"
+    tags: ["@negative"]
+    sentence: "Simply viewing the notes list never changes any note's done status."
+  - title: "The done indicator does not displace or truncate existing row content"
+    tags: ["@negative"]
+    sentence: "The status indicator shares the row with the title, preview, and timestamp without pushing any of them out or cutting them off."
+  - title: "The row layout holds at the narrowest supported viewport"
+    tags: ["@negative"]
+    sentence: "At the narrowest supported screen width, the status indicator and the rest of the row stay visible and intact."
+  - title: "A screen-reader user hears each note's completion status in row order"
+    tags: ["@edge-case"]
+    sentence: "A screen-reader user moving through the list hears each note's status stated plainly as done or not done, in the order the rows appear."
+  - title: "An iconographic done indicator is hidden from the accessibility tree"
+    tags: ["@edge-case"]
+    sentence: "When the status is shown as an icon, the icon is hidden from assistive technology and the written label carries the meaning instead."
+  - title: "Done rows remain distinguishable under forced-colours rendering"
+    tags: ["@edge-case"]
+    sentence: "Even when the browser forces high-contrast colours, done rows stay distinguishable from open rows by means other than colour."
+assumptions:
+  - id: ASSUM-001
+    text: "The notes list row payload already includes the note's boolean done flag, so no backend change is needed to expose it"
+    basis: "Open question in the input: the list may fetch a reduced summary payload that omits the flag. Chose between (a) the flag is already on the row payload and FEAT-PO-001 is presentational only, or (b) a backend change is required to include it."
+  - id: ASSUM-002
+    text: "A note with no explicit done value is treated as not done rather than rendering an unknown or broken state"
+    basis: "Stated in FEAT-PO-001 but the underlying model behaviour is unconfirmed. Chose between (a) absent flag defaults to not-done, or (b) absent flag renders an unknown/broken state."
+  - id: ASSUM-003
+    text: "The done treatment combines a check mark plus a 'Done' label with a row-level treatment such as muted title weight or strikethrough"
+    basis: "FEAT-PO-003 gives examples ('such as'), not a fixed design. Chose between (a) check mark + 'Done' label + muted/strikethrough title, or (b) a different combination of non-colour channels."
+  - id: ASSUM-004
+    text: "The accessible announcement names the state explicitly as 'Done' or 'Not done'"
+    basis: "FEAT-PO-004 gives 'for example' wording. Chose between (a) the labels 'Done' / 'Not done', or (b) alternative explicit state wording."
+  - id: ASSUM-005
+    text: "Under forced-colours / high-contrast mode, done rows stay distinguishable via border, underline, or the persisted text label"
+    basis: "FEAT-PO-005 lists examples ('such as'). Chose between (a) border/underline/persisted text label, or (b) other non-colour differentiators."
+  - id: ASSUM-006
+    text: "The narrowest supported viewport is a single mobile-class width at which the row layout must hold"
+    basis: "The input requires the layout to hold at 'the narrowest supported viewport' but never states which width. Chose between (a) a single mobile-class breakpoint, or (b) a specific documented minimum width."
+  - id: ASSUM-007
+    text: "The web app has a single notes list view whose rows are uniform, so one indicator implementation covers the request"
+    basis: "ASM-007 in the input is medium-confidence and unconfirmed. Chose between (a) one uniform list view, or (b) multiple list variants (search, tags, archives) each needing the treatment."
+  - id: ASSUM-008
+    text: "'Done' is a binary state — a note is either done or not done — with no partial, archived, or multi-state completion model"
+    basis: "ASM-002 in the input is medium-confidence and unconfirmed. Chose between (a) a binary done/not-done model, or (b) a multi-state completion model requiring the indicator to enumerate more states."
+  - id: ASSUM-009
+    text: "The note model already persists a boolean done flag that the web app can read; the request is to display it, not to introduce it"
+    basis: "ASM-001 in the input is high-confidence but unconfirmed by code shown to me. Chose between (a) the flag already exists and is read-only here, or (b) a storage/model change and write path are prerequisites."
+  - id: ASSUM-010
+    text: "Done notes remain in the default list view mixed with open notes rather than being grouped, dimmed, or moved to the end"
+    basis: "Open question in the input about whether done notes are mixed or grouped. Chose between (a) mixed in the default view, or (b) grouped/dimmed/moved to the end."
