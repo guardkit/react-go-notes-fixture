@@ -1,0 +1,38 @@
+format_version: '2.0'
+task_id: TASK-9018-003
+registered_at:
+  sha: 161a5092c13d1bc6f32ecaf98cb8310c00d8750b
+  date: '2026-10-18'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-done-flag-AC-001
+  text: The notes list reports done false for all notes after the migration
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-002
+  text: The notes list reports the done flag for every note
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-003
+  text: A note that has never been marked complete is returned with done false
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-004
+  text: Existing note fields and the endpoint path are unchanged
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-flag-AC-005
+  text: A client built from the contract treats done as always present
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation
