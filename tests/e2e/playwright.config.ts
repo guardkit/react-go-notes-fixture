@@ -50,6 +50,19 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], video: "on" },
     },
     {
+      // The done flag at the surface the person reads: the rendered rows of the
+      // notes list, on the same browser the journey is recorded with. The
+      // viewport is the tall one so a done row and an open row are compared in
+      // one showing of the list.
+      name: "chromium-done-indicator",
+      testMatch: /done-indicator\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 1024 },
+        video: "retain-on-failure",
+      },
+    },
+    {
       name: "firefox-smoke",
       testMatch: /smoke\.spec\.ts/,
       use: { ...devices["Desktop Firefox"], video: smokeVideo },

@@ -1,14 +1,15 @@
 ---
-id: TASK-1291-002
-title: Make the done state perceivable beyond sight
-task_type: feature
-parent_review: TASK-REV-1291
-feature_id: FEAT-1291
-wave: 2
-implementation_mode: task-work
 complexity: 4
 dependencies:
-  - TASK-1291-001
+- TASK-1291-001
+feature_id: FEAT-1291
+id: TASK-1291-002
+implementation_mode: task-work
+parent_review: TASK-REV-1291
+status: design_approved
+task_type: feature
+title: Make the done state perceivable beyond sight
+wave: 2
 ---
 
 Make the done state conveyed in the notes list perceivable beyond sight: a screen-reader user hears each note's completion status in row order, the iconographic indicator adds no duplicate announcement, and done rows stay distinguishable under forced high-contrast rendering.
