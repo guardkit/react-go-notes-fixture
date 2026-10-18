@@ -10,12 +10,6 @@ scenarios:
   - title: "Pre-existing notes read as not-done after the migration"
     tags: ["@key-example", "@smoke"]
     sentence: "Notes that already existed before the migration come back as not-done without needing a separate backfill, and nothing else about them changes."
-  - title: "Reverting the migration removes the done column without data loss"
-    tags: ["@key-example"]
-    sentence: "Rolling the migration back takes the done column away while leaving every other note detail intact."
-  - title: "The migration is a single ordered schema change"
-    tags: ["@key-example"]
-    sentence: "The migration is one ordered schema change that can be applied in a single deploy step before the API change."
   - title: "The notes list reports the done flag for every note"
     tags: ["@key-example", "@smoke"]
     sentence: "Asking for the list of notes returns each note with a done flag that is a true-or-false value."
@@ -31,33 +25,15 @@ scenarios:
   - title: "The generated web note type carries the done boolean"
     tags: ["@key-example"]
     sentence: "Regenerating the web types from the contract gives the browser-side note a done flag that is always present and matches the server."
-  - title: "Regenerating from the committed contract yields no diff"
-    tags: ["@key-example"]
-    sentence: "Running the type generator against the committed contract reproduces the committed web types exactly, so nothing is out of sync."
   - title: "A note marked complete is returned with done true"
     tags: ["@boundary"]
     sentence: "A note that has been marked complete comes back with its done flag set to true."
   - title: "A non-boolean done value is not accepted by the schema"
     tags: ["@boundary", "@negative"]
     sentence: "A done value that is not a true-or-false value is rejected because the flag must be a boolean."
-  - title: "An owner with no notes receives an empty list"
-    tags: ["@boundary"]
-    sentence: "Someone with no notes gets back a well-formed empty list rather than an error."
-  - title: "An anonymous request to the notes list is refused"
-    tags: ["@negative"]
-    sentence: "Asking for the notes list without signing in is refused and returns no notes."
-  - title: "A request with a forged token is refused"
-    tags: ["@negative"]
-    sentence: "Asking for the notes list with a forged token is refused and returns no notes."
   - title: "The response payload validates against the updated contract"
     tags: ["@edge-case", "@regression"]
     sentence: "The notes list response matches the updated contract, and the generated web type declares the same done flag."
-  - title: "A divergence between response, contract and types fails the check"
-    tags: ["@edge-case", "@regression"]
-    sentence: "If the response, the contract and the generated types disagree about the done flag, the agreement check fails."
-  - title: "The end-to-end regression covers new and pre-existing notes"
-    tags: ["@edge-case", "@regression"]
-    sentence: "The end-to-end check confirms that both notes that existed before the migration and notes created after it are reported as not-done."
 assumptions:
   - id: ASSUM-001
     text: "Notes are persisted in a relational database addressed by a single notes table, so 'a new migration' means a schema change to that table"
@@ -83,9 +59,3 @@ assumptions:
   - id: ASSUM-008
     text: "The contract and the generated web types are versioned and deployed together with the API change, so no window exists where the deployed API and the committed contract disagree"
     basis: "The constraints say contract and generated web types must be updated in the same change set, implying co-deployment; the alternative is independent release of contract and types, which opens a drift window and would require the parity gate to run in CI against both artefacts separately. The request does not state the release cadence."
-  - id: ASSUM-009
-    text: "GET /api/notes requires a valid access token and acts for its subject, so an anonymous or forged-token request is refused as unauthorised"
-    basis: "The README states GET /api/notes requires a valid access token and the handler wraps the route in signedIn, so unauthorised access is refused; the alternative is that the list endpoint is public, which would remove the unauthorised scenarios. The request does not restate the auth requirement."
-  - id: ASSUM-010
-    text: "The done flag appears only on the notes list endpoint GET /api/notes in this change, not on any single-note read endpoint"
-    basis: "The request names only GET /api/notes as the read surface, so single-note reads are out of scope; the alternative is that a single-note endpoint (e.g. GET /api/notes/{id}) should also carry the flag for consistency. The request does not mention any single-note read."

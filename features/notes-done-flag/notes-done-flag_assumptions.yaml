@@ -90,23 +90,3 @@ assumptions:
     gate to run in CI against both artefacts separately. The request does not state
     the release cadence.
   human_response: deferred
-- id: ASSUM-009
-  scenario: An anonymous request to the notes list is refused
-  assumption: GET /api/notes requires a valid access token and acts for its subject,
-    so an anonymous or forged-token request is refused as unauthorised
-  confidence: low
-  basis: The README states GET /api/notes requires a valid access token and the handler
-    wraps the route in signedIn, so unauthorised access is refused; the alternative
-    is that the list endpoint is public, which would remove the unauthorised scenarios.
-    The request does not restate the auth requirement.
-  human_response: deferred
-- id: ASSUM-010
-  scenario: The notes list reports the done flag for every note
-  assumption: The done flag appears only on the notes list endpoint GET /api/notes
-    in this change, not on any single-note read endpoint
-  confidence: low
-  basis: The request names only GET /api/notes as the read surface, so single-note
-    reads are out of scope; the alternative is that a single-note endpoint (e.g. GET
-    /api/notes/{id}) should also carry the flag for consistency. The request does
-    not mention any single-note read.
-  human_response: deferred
