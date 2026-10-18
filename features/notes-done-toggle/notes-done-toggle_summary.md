@@ -10,7 +10,7 @@ REVIEW REQUIRED: all assumptions unconfirmed (--auto mode)
 
 ## Scope
 
-This specification covers the in-list completion control on the web app's notes list: a tick control per note row that flips a note's done/not-done state, saves it through the existing PATCH /api/notes/{id} endpoint carrying the done flag, and renders the persisted state after a reload from the backend's stored note data. It spans the three features of the slice (FEAT-PO-001 tick control, FEAT-PO-002 persistence, FEAT-PO-003 reload) as one vertical slice. The backend PATCH endpoint and the notes list read path are treated as existing surfaces; their exact payload shapes are carried as low-confidence assumptions rather than invented.
+This specification covers the in-list completion control on the web app's notes list: a tick control per note row that flips a note's done/not-done state, saves it through the existing PATCH /api/notes/{id} endpoint carrying the done flag, and renders the persisted state after a reload. It spans the three features of the slice (FEAT-PO-001 tick control, FEAT-PO-002 persistence, FEAT-PO-003 reload) as one vertical slice. The backend PATCH endpoint and the notes list read path are treated as existing surfaces; their exact payload shapes are carried as low-confidence assumptions rather than invented.
 
 ## Scenario Counts by Category
 

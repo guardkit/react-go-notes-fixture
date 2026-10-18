@@ -15,19 +15,19 @@ scenarios:
     sentence: "A note can be marked done straight from the list without ever opening its detail view."
   - title: "Ticking a note saves the done state through PATCH /api/notes/{id}"
     tags: ["@key-example", "@smoke"]
-    sentence: "Ticking a note saves its done state by sending the updated flag to the note's update endpoint and showing the state the server confirms."
+    sentence: "Ticking a note saves it as done via the note update endpoint and shows the state the server confirms."
   - title: "Unticking a note saves the not-done state through PATCH /api/notes/{id}"
     tags: ["@key-example"]
-    sentence: "Unticking a note saves its not-done state by sending the cleared flag to the note's update endpoint and showing the state the server confirms."
+    sentence: "Unticking a note saves it as not done via the note update endpoint and shows the state the server confirms."
   - title: "A note ticked as done appears ticked after a reload"
     tags: ["@key-example", "@smoke"]
-    sentence: "A note saved as done still shows as ticked after the list is reloaded, because the state is read back from the backend."
+    sentence: "A note saved as done still shows as ticked after the list is reloaded, because the state is read back from the server."
   - title: "A note returned to not done appears unticked after a reload"
     tags: ["@key-example"]
-    sentence: "A note saved as not done still shows as unticked after the list is reloaded, because the state is read back from the backend."
+    sentence: "A note saved as not done still shows as unticked after the list is reloaded, because the state is read back from the server."
   - title: "The completion control accepts only the two binary states"
     tags: ["@boundary"]
-    sentence: "The completion control only ever holds done or not done, with no intermediate status recorded."
+    sentence: "The completion control only ever shows done or not done, with no intermediate status."
 assumptions:
   - id: ASSUM-001
     text: "The done state is represented as a boolean done flag (done: true / done: false) rather than a completed field or a status enum"
