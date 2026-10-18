@@ -1,0 +1,71 @@
+id: FEAT-8037
+name: "Notes List Done-Flag Visibility"
+description: "Show each note's done flag in the web app's notes list, with done notes clearly marked as done"
+created: "2026-07-09T14:32:00Z"
+status: planned
+complexity: 4
+estimated_tasks: 2
+feature_files:
+  - features/notes-list-done-flag-visibility/notes-list-done-flag-visibility.feature
+
+tasks:
+  - id: TASK-8037-001
+    name: "Render the done flag in the notes list"
+    file_path: "tasks/backlog/notes-list-done-flag-visibility/TASK-8037-001-render-done-flag-in-notes-list.md"
+    complexity: 4
+    dependencies: []
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 90
+
+  - id: TASK-8037-002
+    name: "Verify done-flag visibility at the browser surface"
+    file_path: "tasks/backlog/notes-list-done-flag-visibility/TASK-8037-002-verify-done-flag-visibility-at-browser-surface.md"
+    complexity: 3
+    dependencies:
+      - TASK-8037-001
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 60
+
+orchestration:
+  parallel_groups:
+    - - TASK-8037-001
+    - - TASK-8037-002
+  estimated_duration_minutes: 150
+  recommended_parallel: 1
+
+scenario_owners:
+  "Every note row reflects its done flag": TASK-8037-001
+  "Showing the done flag does not alter other list behaviour": TASK-8037-001
+  "Done notes are visually distinct from not-done notes": TASK-8037-001
+  "Rows render in the not-done presentation when the flag is not set": TASK-8037-001
+  "A done note is rendered with the done treatment": TASK-8037-001
+  "Only done rows carry the non-color textual cue": TASK-8037-001
+  "A list of only not-done notes still shows each note in the not-done presentation": TASK-8037-001
+  "The done treatment is never applied to a not-done note": TASK-8037-001
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Every note row reflects its done flag":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Showing the done flag does not alter other list behaviour":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Done notes are visually distinct from not-done notes":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Rows render in the not-done presentation when the flag is not set":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A done note is rendered with the done treatment":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Only done rows carry the non-color textual cue":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "A list of only not-done notes still shows each note in the not-done presentation":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The done treatment is never applied to a not-done note":
+    verifier: "exam"

@@ -1,0 +1,60 @@
+feature: Notes List Done-Flag Visibility
+generated: '2026-07-09T14:32:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: Every note row reflects its done flag
+  assumption: The notes list already receives the done flag in the data it fetches,
+    so no API change is required
+  confidence: low
+  basis: Input ASM-004 (medium) is not settled by the request or code; the alternative
+    is that the list's data fetch/API must be extended to include the done flag before
+    FEAT-PO-001
+  human_response: deferred
+- id: ASSUM-002
+  scenario: Every note row reflects its done flag
+  assumption: The web app has a single notes list view where all notes are displayed
+    together, and the change applies there
+  confidence: low
+  basis: Input ASM-002 (medium) is not settled; the alternative is that multiple list
+    surfaces (search results, filters, archives) exist and the done marking must be
+    specified and applied per surface
+  human_response: deferred
+- id: ASSUM-003
+  scenario: Done notes are visually distinct from not-done notes
+  assumption: The done treatment is a combination of a 'Done' textual label and visually
+    differentiated row styling
+  confidence: low
+  basis: Open question in the input lists strikethrough, dimmed row, checkmark icon,
+    'Done' badge, or a combination; none is chosen by the request, so a 'Done' textual
+    label plus differentiated styling is proposed against the alternative of a single
+    cue
+  human_response: deferred
+- id: ASSUM-004
+  scenario: Done notes are visually distinct from not-done notes
+  assumption: Done notes remain in their current list position; no reordering or grouping
+    of done notes is applied
+  confidence: low
+  basis: Open question in the input asks whether done notes stay in place or are reordered/grouped;
+    the request's 'without altering ordering' constraint supports keeping position,
+    against the alternative of grouping done notes
+  human_response: deferred
+- id: ASSUM-005
+  scenario: Rows render in the not-done presentation when the flag is not set
+  assumption: A note whose done flag is unset or null is treated as not-done and rendered
+    in the not-done presentation
+  confidence: low
+  basis: Open question in the input asks whether unset/null is treated as not-done
+    or shown as unknown; FEAT-PO-001's default-to-not-done wording supports not-done,
+    against the alternative of a distinct unknown presentation
+  human_response: deferred
+- id: ASSUM-006
+  scenario: Every note row reflects its done flag
+  assumption: The done flag is a boolean-like completed state already present on the
+    note model and is not redefined by this work
+  confidence: low
+  basis: Input ASM-001 (high) states the flag already exists; recorded as deferred
+    because the request does not itself confirm the model shape, and the alternative
+    is that the flag's representation needs definition
+  human_response: deferred
