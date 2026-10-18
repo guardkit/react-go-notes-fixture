@@ -77,6 +77,45 @@ func (s PGStore) Create(ctx context.Context, owner, label string) (note Note, er
 	return note, nil
 }
 
+// ErrNoteNotFound reports that no note of the signed-in owner carries the id a
+// write was asked for. A note that was never stored and a note belonging to
+// someone else share this one answer, so a caller cannot tell the two apart.
+var ErrNoteNotFound = errors.New("note not found")
+
+// SetDone writes the completion flag of one of owner's notes and answers with
+// the note as storage holds it afterwards. The UPDATE that moves the flag is
+// scoped to the caller on the very statement that writes it - it filters on the
+// id and on owner_sub - so a note belonging to another subject is changed by
+// nothing and answers ErrNoteNotFound, exactly like an id that was never stored.
+// The flag reaches PostgreSQL and comes back as the boolean column the 0003
+// migration added, so true and false both keep their shape, and the row that is
+// answered is the row this statement just wrote, shaped the way List shapes one.
+func (s PGStore) SetDone(ctx context.Context, owner, id string, done bool) (Note, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	// Only a number can name a row of the BIGINT id column, so an id that is not
+	// one can match nothing: it is answered as the same not found as a missing
+	// row, and no statement is ever sent for it.
+	noteID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return Note{}, fmt.Errorf("set note done flag: %w", ErrNoteNotFound)
+	}
+	var note Note
+	var storedID int64
+	if err := s.Pool.QueryRow(queryCtx,
+		"UPDATE notes SET done = $1 WHERE id = $2 AND owner_sub = $3 RETURNING id, label, created_at, done",
+		done, noteID, owner,
+	).Scan(&storedID, &note.Label, &note.CreatedAt, &note.Done); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Note{}, fmt.Errorf("set note done flag: %w", ErrNoteNotFound)
+		}
+		return Note{}, fmt.Errorf("update note done flag: %w", err)
+	}
+	note.ID = strconv.FormatInt(storedID, 10)
+	note.CreatedAt = note.CreatedAt.UTC()
+	return note, nil
+}
+
 // List returns owner's newest notes first, each with the completion flag the
 // 0003 migration added. The column is NOT NULL DEFAULT false, so a row written
 // before the column existed reads back as a flag of false rather than a gap.

@@ -18,6 +18,10 @@ import (
 type Store interface {
 	Create(ctx context.Context, owner, label string) (Note, error)
 	List(ctx context.Context, owner string) ([]Note, error)
+	// SetDone writes the completion flag of one of owner's notes and answers with
+	// the note as storage holds it afterwards. A note the caller does not own is
+	// reported with ErrNoteNotFound, and changes nothing.
+	SetDone(ctx context.Context, owner, id string, done bool) (Note, error)
 }
 
 // Authenticator turns a bearer token into the owner's subject, or refuses it.
@@ -73,6 +77,41 @@ func Routes(store Store, authn Authenticator, runID string) http.Handler {
 			return
 		}
 		writeJSON(w, http.StatusCreated, note)
+	}))
+	// The signed-in owner sets one of their own notes done or not done. The
+	// {id} is the caller's path segment and the flag is the whole body, so the
+	// write is scoped to the caller on the statement that makes it: a note that
+	// was never stored and a note of someone else answer the same 404, and
+	// nothing about either is written or leaked.
+	mux.Handle("PATCH /api/notes/{id}", signedIn(authn, func(w http.ResponseWriter, r *http.Request, owner string) {
+		id := r.PathValue("id")
+		done, err := decodeDone(w, r)
+		if err != nil {
+			// A flag that is not the JSON boolean true or false answers with the
+			// message naming it; every other undecodable body stays
+			// "Invalid request". Neither reaches storage.
+			if errors.Is(err, errDoneNotBoolean) {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			writeError(w, http.StatusBadRequest, "Invalid request")
+			return
+		}
+		note, err := store.SetDone(r.Context(), owner, id, done)
+		if err != nil {
+			// One answer for both negatives - no such note, or one held by
+			// another subject - so a caller cannot tell the two apart.
+			if errors.Is(err, ErrNoteNotFound) {
+				writeError(w, http.StatusNotFound, "Not found")
+				return
+			}
+			slog.ErrorContext(r.Context(), "set note done flag failed")
+			writeError(w, http.StatusInternalServerError, "Service unavailable")
+			return
+		}
+		// The note as storage holds it now: the flag this caller just wrote, and
+		// every other field of the note exactly as it was.
+		writeJSON(w, http.StatusOK, note)
 	}))
 	return mux
 }

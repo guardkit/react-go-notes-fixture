@@ -34,10 +34,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["setNoteDone"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        DoneUpdate: {
+            done: boolean;
+        };
         Error: {
             message: string;
         };
@@ -162,6 +181,44 @@ export interface operations {
                 };
             };
             401: components["responses"]["SignInRequired"];
+            500: components["responses"]["Unavailable"];
+        };
+    };
+    setNoteDone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The id of the note whose completion flag is set, addressed through the signed-in owner. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DoneUpdate"];
+            };
+        };
+        responses: {
+            /** @description The note as storage holds it now, carrying the flag this caller just wrote. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
+                };
+            };
+            401: components["responses"]["SignInRequired"];
+            /** @description No note of the signed-in owner has this id. A note held by another subject is answered identically, so existence is never disclosed. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             500: components["responses"]["Unavailable"];
         };
     };

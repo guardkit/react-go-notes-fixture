@@ -61,6 +61,41 @@ paths:
           $ref: "#/components/responses/SignInRequired"
         "500":
           $ref: "#/components/responses/Unavailable"
+  /api/notes/{id}:
+    patch:
+      operationId: setNoteDone
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The id of the note whose completion flag is set, addressed through the signed-in owner.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoneUpdate"
+      responses:
+        "200":
+          description: The note as storage holds it now, carrying the flag this caller just wrote.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "401":
+          $ref: "#/components/responses/SignInRequired"
+        "404":
+          description: No note of the signed-in owner has this id. A note held by another subject is answered identically, so existence is never disclosed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/Unavailable"
 components:
   securitySchemes:
     bearer:
@@ -105,6 +140,15 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+    DoneUpdate:
+      type: object
+      additionalProperties: false
+      required: [done]
+      properties:
+        # The whole body of the toggle: the completion state the caller wants
+        # the note to hold. Only the flag is written, never the label or id.
+        done:
+          type: boolean
     Note:
       type: object
       additionalProperties: false
