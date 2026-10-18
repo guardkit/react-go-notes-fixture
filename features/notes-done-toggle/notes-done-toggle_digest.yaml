@@ -1,0 +1,64 @@
+feature: notes-done-toggle
+generated: "2026-07-09T14:32:00Z"
+endpoint:
+  method: PATCH
+  path: /api/notes/{id}
+scenarios:
+  - title: "Ticking a note in the list marks it as done"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Ticking a note's completion control in the list marks that note as done and visually distinguishes it."
+  - title: "Unticking a done note in the list returns it to not done"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Unticking a done note's completion control in the list returns it to the not-done state and removes the done styling."
+  - title: "The completion control is operable without opening the note detail view"
+    tags: ["@key-example"]
+    sentence: "A note can be marked done straight from the list without ever opening its detail view."
+  - title: "Ticking a note saves the done state through PATCH /api/notes/{id}"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Ticking a note saves its done state by sending the updated flag to the note's update endpoint and showing the state the server confirms."
+  - title: "Unticking a note saves the not-done state through PATCH /api/notes/{id}"
+    tags: ["@key-example"]
+    sentence: "Unticking a note saves its not-done state by sending the cleared flag to the note's update endpoint and showing the state the server confirms."
+  - title: "A failed save reverts the tick control and shows a failure indication"
+    tags: ["@negative"]
+    sentence: "When saving a note's done state fails, the tick control snaps back to its previous state and the user is told the save failed."
+  - title: "A note ticked as done appears ticked after a reload"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A note saved as done still shows as ticked after the list is reloaded, because the state is read back from the backend."
+  - title: "A note returned to not done appears unticked after a reload"
+    tags: ["@key-example"]
+    sentence: "A note saved as not done still shows as unticked after the list is reloaded, because the state is read back from the backend."
+  - title: "The completion control accepts only the two binary states"
+    tags: ["@boundary"]
+    sentence: "The completion control only ever holds done or not done, with no intermediate status recorded."
+  - title: "Re-applying the same done flag answers the same note"
+    tags: ["@boundary"]
+    sentence: "Ticking a note that is already done leaves it done and returns the same note, so re-applying the same flag changes nothing."
+  - title: "Saving a note that does not exist answers one indistinguishable not-found"
+    tags: ["@negative"]
+    sentence: "Trying to save a note that does not exist is refused with a single not-found answer and the tick control reverts to its previous state."
+  - title: "Saving the done flag leaves the note's other fields untouched"
+    tags: ["@edge-case"]
+    sentence: "Saving only the done flag leaves the note's label and creation time exactly as they were."
+  - title: "An unauthenticated save is challenged rather than applied"
+    tags: ["@negative"]
+    sentence: "A save attempted without being signed in is refused with a sign-in challenge and leaves the note's completion state unchanged."
+assumptions:
+  - id: ASSUM-001
+    text: "The done state is represented as a boolean done flag (done: true / done: false) rather than a completed field or a status enum"
+    basis: "Open question in the input: exact field name and type of the done flag not stated; the contract shows a boolean done flag but the request does not name the field, so the boolean-done choice is inferred over a completed field or status enum"
+  - id: ASSUM-002
+    text: "A done note is visually distinguished by a struck-through or dimmed title"
+    basis: "FEAT-PO-001 gives struck-through or dimmed only as examples; the request does not fix which visual treatment is used, so struck-through/dimmed is chosen over any other distinguishing style"
+  - id: ASSUM-003
+    text: "The tick control updates optimistically while the PATCH is in flight and reconciles to the server-confirmed state on response"
+    basis: "Open question in the input: optimistic updating vs waiting for the server response before changing appearance is undecided; optimistic-then-reconcile is chosen over waiting for the response"
+  - id: ASSUM-004
+    text: "A failed save is indicated by an inline failure message on the affected note row"
+    basis: "FEAT-PO-002 requires a failure indication but does not specify its form; an inline row message is chosen over a toast or banner"
+  - id: ASSUM-005
+    text: "The notes list read path (GET of notes) returns the done flag for each note so the control can render its persisted state on load and after reload"
+    basis: "ASM-002 in the input is a medium-confidence assumption, not a settled fact; the read path returning the done flag is assumed over the read path omitting it"
+  - id: ASSUM-006
+    text: "The PATCH /api/notes/{id} body carries the done flag alone and the endpoint accepts it"
+    basis: "ASM-001 in the input is a medium-confidence assumption that the existing endpoint accepts a boolean done flag; the request does not confirm the payload shape, so accepting the flag alone is assumed over needing backend extension"
