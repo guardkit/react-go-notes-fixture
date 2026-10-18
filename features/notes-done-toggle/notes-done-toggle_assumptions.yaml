@@ -32,27 +32,10 @@ assumptions:
     chosen over waiting for the response'
   human_response: deferred
 - id: ASSUM-004
-  scenario: A failed save reverts the tick control and shows a failure indication
-  assumption: A failed save is indicated by an inline failure message on the affected
-    note row
-  confidence: low
-  basis: FEAT-PO-002 requires a failure indication but does not specify its form;
-    an inline row message is chosen over a toast or banner
-  human_response: deferred
-- id: ASSUM-005
   scenario: A note ticked as done appears ticked after a reload
   assumption: The notes list read path (GET of notes) returns the done flag for each
     note so the control can render its persisted state on load and after reload
   confidence: low
   basis: ASM-002 in the input is a medium-confidence assumption, not a settled fact;
     the read path returning the done flag is assumed over the read path omitting it
-  human_response: deferred
-- id: ASSUM-006
-  scenario: Saving the done flag leaves the note's other fields untouched
-  assumption: The PATCH /api/notes/{id} body carries the done flag alone and the endpoint
-    accepts it
-  confidence: low
-  basis: ASM-001 in the input is a medium-confidence assumption that the existing
-    endpoint accepts a boolean done flag; the request does not confirm the payload
-    shape, so accepting the flag alone is assumed over needing backend extension
   human_response: deferred
