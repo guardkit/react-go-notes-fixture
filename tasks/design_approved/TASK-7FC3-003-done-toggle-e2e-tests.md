@@ -1,14 +1,15 @@
 ---
-id: TASK-7FC3-003
-title: Add end-to-end tests for the done-toggle flow
-task_type: testing
-parent_review: TASK-REV-7FC3
-feature_id: FEAT-7FC3
-wave: 2
-implementation_mode: task-work
 complexity: 4
 dependencies:
-  - TASK-7FC3-001
+- TASK-7FC3-001
+feature_id: FEAT-7FC3
+id: TASK-7FC3-003
+implementation_mode: task-work
+parent_review: TASK-REV-7FC3
+status: design_approved
+task_type: testing
+title: Add end-to-end tests for the done-toggle flow
+wave: 2
 ---
 
 Add end-to-end tests for the done-toggle flow covering the full user journey: ticking a note, verifying the saved state after reload, and the reverse direction, using the existing Playwright infrastructure.

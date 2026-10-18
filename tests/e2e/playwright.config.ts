@@ -65,6 +65,16 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], video: "retain-on-failure" },
     },
     {
+      // The same flag as the person changes it: the tick in the row, the PATCH
+      // it sends, and the state the list shows after the page is reloaded. It
+      // runs on the same browser as the two checks above, so the flag the
+      // control writes, the flag the row shows and the flag the boundary
+      // answers are all read off one stack.
+      name: "chromium-notes-done-toggle",
+      testMatch: /notes-done-toggle\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], video: "retain-on-failure" },
+    },
+    {
       name: "firefox-smoke",
       testMatch: /smoke\.spec\.ts/,
       use: { ...devices["Desktop Firefox"], video: smokeVideo },
