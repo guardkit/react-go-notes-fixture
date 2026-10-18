@@ -1,0 +1,91 @@
+feature: notes-done-flag
+generated: "2026-07-09T14:32:00Z"
+endpoint:
+  method: GET
+  path: /api/notes
+scenarios:
+  - title: "Applying the migration adds a done column defaulting to false"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Running the new migration gives the notes table a done column that cannot be empty and starts every note as not-done."
+  - title: "Pre-existing notes read as not-done after the migration"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Notes that already existed before the migration come back as not-done without needing a separate backfill, and nothing else about them changes."
+  - title: "Reverting the migration removes the done column without data loss"
+    tags: ["@key-example"]
+    sentence: "Rolling the migration back takes the done column away while leaving every other note detail intact."
+  - title: "The migration is a single ordered schema change"
+    tags: ["@key-example"]
+    sentence: "The migration is one ordered schema change that can be applied in a single deploy step before the API change."
+  - title: "The notes list reports the done flag for every note"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Asking for the list of notes returns each note with a done flag that is a true-or-false value."
+  - title: "A note that has never been marked complete is returned with done false"
+    tags: ["@key-example"]
+    sentence: "A note nobody has marked complete comes back with its done flag present and set to false, never left out."
+  - title: "Existing note fields and the endpoint path are unchanged"
+    tags: ["@key-example"]
+    sentence: "Adding the done flag leaves the other note details and the address of the notes list exactly as they were."
+  - title: "The contract declares done as a required boolean on the note schema"
+    tags: ["@key-example"]
+    sentence: "The contract states that every note must carry a done flag that is a true-or-false value, defaulting to false."
+  - title: "The generated web note type carries the done boolean"
+    tags: ["@key-example"]
+    sentence: "Regenerating the web types from the contract gives the browser-side note a done flag that is always present and matches the server."
+  - title: "Regenerating from the committed contract yields no diff"
+    tags: ["@key-example"]
+    sentence: "Running the type generator against the committed contract reproduces the committed web types exactly, so nothing is out of sync."
+  - title: "A note marked complete is returned with done true"
+    tags: ["@boundary"]
+    sentence: "A note that has been marked complete comes back with its done flag set to true."
+  - title: "A non-boolean done value is not accepted by the schema"
+    tags: ["@boundary", "@negative"]
+    sentence: "A done value that is not a true-or-false value is rejected because the flag must be a boolean."
+  - title: "An owner with no notes receives an empty list"
+    tags: ["@boundary"]
+    sentence: "Someone with no notes gets back a well-formed empty list rather than an error."
+  - title: "An anonymous request to the notes list is refused"
+    tags: ["@negative"]
+    sentence: "Asking for the notes list without signing in is refused and returns no notes."
+  - title: "A request with a forged token is refused"
+    tags: ["@negative"]
+    sentence: "Asking for the notes list with a forged token is refused and returns no notes."
+  - title: "The response payload validates against the updated contract"
+    tags: ["@edge-case", "@regression"]
+    sentence: "The notes list response matches the updated contract, and the generated web type declares the same done flag."
+  - title: "A divergence between response, contract and types fails the check"
+    tags: ["@edge-case", "@regression"]
+    sentence: "If the response, the contract and the generated types disagree about the done flag, the agreement check fails."
+  - title: "The end-to-end regression covers new and pre-existing notes"
+    tags: ["@edge-case", "@regression"]
+    sentence: "The end-to-end check confirms that both notes that existed before the migration and notes created after it are reported as not-done."
+assumptions:
+  - id: ASSUM-001
+    text: "Notes are persisted in a relational database addressed by a single notes table, so 'a new migration' means a schema change to that table"
+    basis: "The request says 'a new migration adds a done column' (relational-migration wording) and the README shows apps/api/migrations 0001/0002 against a notes table; the alternative is a document/key-value store where the change would be a schemaless per-record defaulting rollout. Not stated explicitly in the request."
+  - id: ASSUM-002
+    text: "GET /api/notes already exists and returns a collection of note objects; this change adds a field rather than introducing the endpoint"
+    basis: "The README and handler.go show GET /api/notes already serving a signed-in owner's notes, so the change is a field addition; the alternative is that the endpoint does not exist and the epic would cover the full list endpoint (pagination, auth, empty-collection semantics). The request does not restate the endpoint's existence."
+  - id: ASSUM-003
+    text: "The web types are machine-generated from the API contract by an existing codegen step, so updating the contract and re-running codegen satisfies 'generated web types updated to match'"
+    basis: "The README states apps/web/src/api-types.ts is generated from contract/openapi.yaml via npm run contract:generate and committed, so codegen is the mechanism; the alternative is hand-maintained types, which would make FEAT-PO-004 a manual edit and make the 'regeneration is a no-op' constraint inapplicable. The request does not name the codegen step."
+  - id: ASSUM-004
+    text: "done is a two-valued boolean completion state, not a richer lifecycle such as a timestamp, enum, or per-user acknowledgement"
+    basis: "The request says 'a done flag ... false by default' and the contract declares a required boolean, implying two-valued state; the alternative is a richer model (completion timestamp/enum) that would change the column type, the contract property type and the generated type. The request does not enumerate the lifecycle."
+  - id: ASSUM-005
+    text: "This change is read-only with respect to the flag: no client-facing write path for setting done is in scope"
+    basis: "The request names only the migration default and the GET response, so no mutation is proposed; the alternative is that a write path (e.g. PATCH /api/notes/{id} or a POST body field) is expected, in which case the flag would be permanently false for every note and the feature non-functional. The request does not state whether a write path is in scope."
+  - id: ASSUM-006
+    text: "The notes table is small enough that adding a non-nullable column with a constant default can be done in a single straightforward migration without an online/lock-aware strategy"
+    basis: "The request asks for 'a new migration' as a single ordered schema change, implying a straightforward add; the alternative is a large table where the add could lock writes and require a two-phase add-default-backfill approach. The request does not state the table size."
+  - id: ASSUM-007
+    text: "Adding a field to the response is backward compatible: existing API consumers tolerate unknown properties and do not perform strict schema rejection"
+    basis: "The request calls the change backward compatible for clients that ignore the new field, implying tolerant consumers; the alternative is strict clients that break on the new field, forcing a versioned endpoint or a coordinated client-first rollout. The request does not enumerate existing consumers."
+  - id: ASSUM-008
+    text: "The contract and the generated web types are versioned and deployed together with the API change, so no window exists where the deployed API and the committed contract disagree"
+    basis: "The constraints say contract and generated web types must be updated in the same change set, implying co-deployment; the alternative is independent release of contract and types, which opens a drift window and would require the parity gate to run in CI against both artefacts separately. The request does not state the release cadence."
+  - id: ASSUM-009
+    text: "GET /api/notes requires a valid access token and acts for its subject, so an anonymous or forged-token request is refused as unauthorised"
+    basis: "The README states GET /api/notes requires a valid access token and the handler wraps the route in signedIn, so unauthorised access is refused; the alternative is that the list endpoint is public, which would remove the unauthorised scenarios. The request does not restate the auth requirement."
+  - id: ASSUM-010
+    text: "The done flag appears only on the notes list endpoint GET /api/notes in this change, not on any single-note read endpoint"
+    basis: "The request names only GET /api/notes as the read surface, so single-note reads are out of scope; the alternative is that a single-note endpoint (e.g. GET /api/notes/{id}) should also carry the flag for consistency. The request does not mention any single-note read."
