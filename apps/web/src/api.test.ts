@@ -11,6 +11,7 @@ const note = {
   id: "9007199254740993",
   label: "hello",
   createdAt: "2026-10-12T09:30:00Z",
+  done: false,
 };
 
 describe("API boundary", () => {
@@ -22,6 +23,18 @@ describe("API boundary", () => {
       "Invalid API response",
     );
     expect(() => parseNote({ ...note, createdAt: "yesterday" })).toThrow(
+      "Invalid API response",
+    );
+    // The contract declares done a required boolean of the note object, so the
+    // runtime parser refuses a note answered without a readable flag.
+    const { id, label, createdAt } = note;
+    expect(() => parseNote({ id, label, createdAt })).toThrow(
+      "Invalid API response",
+    );
+    expect(() => parseNote({ ...note, done: null })).toThrow(
+      "Invalid API response",
+    );
+    expect(() => parseNote({ ...note, done: "yes" })).toThrow(
       "Invalid API response",
     );
     expect(() => parseNoteList([note])).toThrow("Invalid API response");

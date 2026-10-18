@@ -15,10 +15,15 @@ import (
 )
 
 // Note uses a decimal string because JavaScript numbers cannot safely hold all BIGINT values.
+// The done flag is the completion state the contract declares required on every
+// note (contract/openapi.yaml, Note.done); the column behind it is added by
+// apps/api/migrations/0003_add_done.sql as BOOLEAN NOT NULL DEFAULT false, so a
+// note the store has not marked complete is answered not-done, never omitted.
 type Note struct {
 	ID        string    `json:"id"`
 	Label     string    `json:"label"`
 	CreatedAt time.Time `json:"createdAt"`
+	Done      bool      `json:"done"`
 }
 
 // Store is owned by the HTTP consumer; the PostgreSQL adapter implements it.

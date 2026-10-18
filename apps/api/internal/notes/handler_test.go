@@ -199,7 +199,7 @@ func TestCreatePreservesContextOwnerAndWireShape(t *testing.T) {
 	r = r.WithContext(context.WithValue(r.Context(), contextKey{}, "trace"))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
-	want := "{\"id\":\"9007199254740993\",\"label\":\"hello\",\"createdAt\":\"2026-10-12T09:30:00Z\"}\n"
+	want := "{\"id\":\"9007199254740993\",\"label\":\"hello\",\"createdAt\":\"2026-10-12T09:30:00Z\",\"done\":false}\n"
 	if w.Code != http.StatusCreated || w.Body.String() != want {
 		t.Fatalf("got %d %q", w.Code, w.Body.String())
 	}
@@ -381,7 +381,7 @@ func TestStorageTitleIsTheTrimEveryWritePathApplies(t *testing.T) {
 func TestListIsScopedToTheSignedInOwner(t *testing.T) {
 	store := &fakeStore{list: []Note{{ID: "2", Label: "second", CreatedAt: created}}}
 	got := request(Routes(store, fakeAuth{}, "run-1"), http.MethodGet, "/api/notes", "", goodToken)
-	want := "{\"notes\":[{\"id\":\"2\",\"label\":\"second\",\"createdAt\":\"2026-10-12T09:30:00Z\"}]}\n"
+	want := "{\"notes\":[{\"id\":\"2\",\"label\":\"second\",\"createdAt\":\"2026-10-12T09:30:00Z\",\"done\":false}]}\n"
 	if got.Code != http.StatusOK || got.Body.String() != want || store.owner != "user-1" {
 		t.Fatalf("got %d %q owner %q", got.Code, got.Body.String(), store.owner)
 	}

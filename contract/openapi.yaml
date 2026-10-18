@@ -108,7 +108,7 @@ components:
     Note:
       type: object
       additionalProperties: false
-      required: [id, label, createdAt]
+      required: [id, label, createdAt, done]
       properties:
         id:
           type: string
@@ -120,6 +120,8 @@ components:
         createdAt:
           type: string
           format: date-time
+        done:
+          type: boolean
     NoteList:
       type: object
       additionalProperties: false
