@@ -1,14 +1,15 @@
 ---
-id: TASK-F552-002
-title: "Wire PATCH /api/notes/{id} through Routes"
-task_type: feature
-parent_review: TASK-REV-F552
-feature_id: FEAT-F552
-wave: 2
-implementation_mode: task-work
 complexity: 6
 dependencies:
-  - TASK-F552-001
+- TASK-F552-001
+feature_id: FEAT-F552
+id: TASK-F552-002
+implementation_mode: task-work
+parent_review: TASK-REV-F552
+status: design_approved
+task_type: feature
+title: Wire PATCH /api/notes/{id} through Routes
+wave: 2
 ---
 
 Wire `PATCH /api/notes/{id}` in `Routes` so the signed-in owner sets a note's done flag and gets the updated note back, answering 404 for a note that does not exist or belongs to someone else and 401 before any mutation when unauthenticated. This is the delivered surface the person uses and the owner of every approved scenario.

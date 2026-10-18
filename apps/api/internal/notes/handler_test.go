@@ -1259,3 +1259,262 @@ func namesAnyField(text string, names ...string) bool {
 	}
 	return false
 }
+
+// patchedNote asks the delivered PATCH route to set the completion flag of one
+// note, exactly as the person using the surface does: the id goes in the path,
+// the flag in a JSON body, the caller's token in the Authorization header.
+func patchedNote(store Store, id, body, token string) *httptest.ResponseRecorder {
+	return request(Routes(store, fakeAuth{}, "run-1"), http.MethodPatch, "/api/notes/"+id, body, token)
+}
+
+// patchedNoteFields decodes the note the PATCH route answered with as a raw JSON
+// object: a decoded struct cannot tell an omitted field from its zero value, so
+// the checks on the answered note ask the body itself what it carries.
+func patchedNoteFields(t *testing.T, body []byte) map[string]any {
+	t.Helper()
+	var note map[string]any
+	if err := json.Unmarshal(body, &note); err != nil {
+		t.Fatalf("decode patched note %q: %v", body, err)
+	}
+	if note == nil {
+		t.Fatalf("patched note %q is not an object", body)
+	}
+	return note
+}
+
+// The delivered surface, seen by the person who asked for it: the signed-in
+// owner sends the flag they want in a JSON body, the route hands the write to
+// storage for that owner and that id, and the answer is 200 with the note as
+// storage now holds it - the new flag beside every field the note already had.
+func TestPatchSetsTheDoneFlagBothWaysAndAnswersTheUpdatedNote(t *testing.T) {
+	for _, flag := range []bool{true, false} {
+		body := `{"done":` + strconv.FormatBool(flag) + `}`
+		// Storage holds the note with the flag the caller asked for, and answers
+		// with it, exactly as PGStore.SetDone does.
+		updated := Note{ID: "7", Label: "keep it short", CreatedAt: created, Done: flag}
+		store := &fakeStore{doneNote: updated}
+		got := patchedNote(store, "7", body, goodToken)
+		want := `{"id":"7","label":"keep it short","createdAt":"2026-10-12T09:30:00Z","done":` + strconv.FormatBool(flag) + "}\n"
+		if got.Code != http.StatusOK || got.Body.String() != want {
+			t.Fatalf("done %v: got %d %q, want 200 %q", flag, got.Code, got.Body.String(), want)
+		}
+		if got.Header().Get("Content-Type") != "application/json" {
+			t.Fatalf("done %v: content type %q", flag, got.Header().Get("Content-Type"))
+		}
+		// The write the route made: the signed-in owner, the id from the path,
+		// the flag from the body - and nothing else.
+		if store.doneCalls != 1 || store.doneOwner != "user-1" || store.doneID != "7" || store.doneValue != flag {
+			t.Fatalf("done %v: %d writes for owner %q id %q flag %v", flag, store.doneCalls, store.doneOwner, store.doneID, store.doneValue)
+		}
+		if store.calls != 0 {
+			t.Fatalf("done %v: %d calls besides the flag write", flag, store.calls)
+		}
+		// The answered note carries its flag as a JSON boolean and keeps the
+		// fields the note already had: nothing renamed, retyped or dropped.
+		note := patchedNoteFields(t, got.Body.Bytes())
+		if doneFlag(t, note, updated.ID) != flag {
+			t.Fatalf("done %v: answered flag %v", flag, note["done"])
+		}
+		assertCarriesTheExistingFields(t, note, updated)
+	}
+}
+
+// Re-sending the same flag is not a second event: both calls answer 200 with the
+// note done, and the note that storage holds afterwards is still the one note
+// with the one flag - no doubling, no drift, no extra field.
+func TestPatchIsIdempotentWhenTheSameFlagIsSentAgain(t *testing.T) {
+	mine := Note{ID: "7", Label: "mine", CreatedAt: created}
+	store := &doneStore{rows: []storedRow{{owner: "user-1", note: mine}}}
+	want := "{\"id\":\"7\",\"label\":\"mine\",\"createdAt\":\"2026-10-12T09:30:00Z\",\"done\":true}\n"
+	for round := 1; round <= 2; round++ {
+		got := patchedNote(store, "7", `{"done":true}`, goodToken)
+		if got.Code != http.StatusOK || got.Body.String() != want {
+			t.Fatalf("round %d: got %d %q, want 200 %q", round, got.Code, got.Body.String(), want)
+		}
+		if !doneFlag(t, patchedNoteFields(t, got.Body.Bytes()), "7") {
+			t.Fatalf("round %d: answered without the flag set", round)
+		}
+	}
+	if store.calls != 2 || store.owner != "user-1" || store.id != "7" || !store.value {
+		t.Fatalf("%d writes for owner %q id %q flag %v, want two for user-1/7/true", store.calls, store.owner, store.id, store.value)
+	}
+	if want := (Note{ID: "7", Label: "mine", CreatedAt: created, Done: true}); store.rows[0].note != want {
+		t.Fatalf("the note after two identical writes is %+v, want %+v", store.rows[0].note, want)
+	}
+	if len(store.rows) != 1 {
+		t.Fatalf("the writes left %d notes, want the one note that was there", len(store.rows))
+	}
+}
+
+// doneNotBoolean is the whole 400 body a flag that is not a JSON boolean must
+// answer: a plain message naming the field, not the generic "Invalid request".
+const doneNotBoolean = "{\"message\":\"done must be the JSON boolean true or false\"}\n"
+
+// Only the JSON booleans true and false are a completion flag. An absent done, a
+// null, and every other JSON value are refused at the surface with 400, and the
+// storage write is never asked for them - so no note is toggled by a body the
+// contract does not accept.
+func TestPatchRefusesANonBooleanDoneBeforeAnyWrite(t *testing.T) {
+	for _, body := range []string{
+		`{}`, `{"done":null}`, `{"done":"yes"}`, `{"done":"true"}`, `{"done":""}`,
+		`{"done":1}`, `{"done":0}`, `{"done":1.0}`, `{"done":{}}`, `{"done":[]}`, `{"done":[true]}`,
+	} {
+		store := &fakeStore{doneNote: Note{ID: "7", Label: "mine", CreatedAt: created, Done: true}}
+		got := patchedNote(store, "7", body, goodToken)
+		if got.Code != http.StatusBadRequest || got.Body.String() != doneNotBoolean {
+			t.Fatalf("body %q: got %d %q, want 400 %q", body, got.Code, got.Body.String(), doneNotBoolean)
+		}
+		if store.doneCalls != 0 || store.calls != 0 {
+			t.Fatalf("body %q: %d flag writes, %d other calls, want none", body, store.doneCalls, store.calls)
+		}
+	}
+}
+
+// A body that is not one JSON object at all - not JSON, not an object, a field
+// the request does not define, two objects, invalid UTF-8, an empty or oversized
+// body - is refused with 400 before the write, exactly as the create path
+// refuses it.
+func TestPatchRefusesAnUndecodableBodyBeforeAnyWrite(t *testing.T) {
+	for _, body := range []string{
+		``, `not json`, `["true"]`, `true`, `{"done":true,"extra":1}`,
+		`{"done":true}{"done":false}`, "{\"done\":\"\\xff\"}", `{"done":"` + strings.Repeat("x", 1025) + `"}`,
+	} {
+		store := &fakeStore{doneNote: Note{ID: "7", Label: "mine", CreatedAt: created}}
+		got := patchedNote(store, "7", body, goodToken)
+		if got.Code != http.StatusBadRequest || got.Body.String() != "{\"message\":\"Invalid request\"}\n" {
+			t.Fatalf("body %q: got %d %q", body, got.Code, got.Body.String())
+		}
+		if store.doneCalls != 0 || store.calls != 0 {
+			t.Fatalf("body %q: %d flag writes, %d other calls, want none", body, store.doneCalls, store.calls)
+		}
+	}
+}
+
+// notFound is the whole 404 body a note the caller cannot address must answer.
+const notFound = "{\"message\":\"Not found\"}\n"
+
+// An id that names no note of the caller is answered 404. The failed call leaves
+// the collection exactly as it was: the caller's own note keeps its flag, and the
+// call creates nothing - the one write it made matched no row.
+func TestPatchAnswersNotFoundForANoteThatDoesNotExist(t *testing.T) {
+	mine := Note{ID: "7", Label: "mine", CreatedAt: created}
+	store := &doneStore{rows: []storedRow{{owner: "user-1", note: mine}}}
+	got := patchedNote(store, "999", `{"done":true}`, goodToken)
+	if got.Code != http.StatusNotFound || got.Body.String() != notFound {
+		t.Fatalf("missing note: got %d %q, want 404 %q", got.Code, got.Body.String(), notFound)
+	}
+	// The write was made for the caller and the id they asked for, and it is the
+	// only call the route made: nothing was created.
+	if store.calls != 1 || store.owner != "user-1" || store.id != "999" || !store.value {
+		t.Fatalf("%d calls for owner %q id %q flag %v", store.calls, store.owner, store.id, store.value)
+	}
+	if store.rows[0].note != mine {
+		t.Fatalf("a failed call changed the caller's note to %+v", store.rows[0].note)
+	}
+	if listing := request(Routes(store, fakeAuth{}, "run-1"), http.MethodGet, "/api/notes", "", goodToken); listing.Body.String() != "{\"notes\":[{\"id\":\"7\",\"label\":\"mine\",\"createdAt\":\"2026-10-12T09:30:00Z\",\"done\":false}]}\n" {
+		t.Fatalf("the collection after a failed call reads %q", listing.Body.String())
+	}
+}
+
+// A note that exists but belongs to someone else is answered with the very same
+// 404 as a note nobody holds - never 403 - so the answer leaks nothing about
+// whether the id is real, and the other user's note is left exactly as it was.
+func TestPatchAnswersNotFoundNeverForbiddenForAnotherUsersNote(t *testing.T) {
+	mine := Note{ID: "7", Label: "mine", CreatedAt: created}
+	theirs := Note{ID: "8", Label: "theirs", CreatedAt: created.Add(-time.Minute)}
+	store := &doneStore{rows: []storedRow{{owner: "user-1", note: mine}, {owner: "user-2", note: theirs}}}
+	got := patchedNote(store, "8", `{"done":true}`, goodToken)
+	if got.Code == http.StatusForbidden {
+		t.Fatal("a foreign note answered 403, leaking that the id exists")
+	}
+	if got.Code != http.StatusNotFound || got.Body.String() != notFound {
+		t.Fatalf("foreign note: got %d %q, want 404 %q", got.Code, got.Body.String(), notFound)
+	}
+	if store.rows[1].note != theirs {
+		t.Fatalf("a write for another owner's note changed it to %+v", store.rows[1].note)
+	}
+	// Indistinguishable from a note that was never stored: same code, same body.
+	missing := patchedNote(store, "999", `{"done":true}`, goodToken)
+	if missing.Code != got.Code || missing.Body.String() != got.Body.String() {
+		t.Fatalf("a missing note answers %d %q and a foreign note %d %q: the two must match",
+			missing.Code, missing.Body.String(), got.Code, got.Body.String())
+	}
+	// The same refusal a second time changes nothing either: the foreign note is
+	// still untouched, and its own owner keeps it (checked against storage).
+	if again := patchedNote(store, "8", `{"done":true}`, goodToken); again.Code != http.StatusNotFound {
+		t.Fatalf("note 8 answered %d for a user-1 write, want 404", again.Code)
+	}
+	if store.rows[1].note != theirs {
+		t.Fatalf("a refused write still moved another owner's flag to %v", store.rows[1].note.Done)
+	}
+}
+
+// An anonymous or refused PATCH is answered 401 - the same refusal as
+// GET /api/notes - before the handler runs, so the note's flag is untouched and
+// storage is never asked to write it.
+func TestAnonymousPatchIsRefusedWith401BeforeAnyMutation(t *testing.T) {
+	mine := Note{ID: "7", Label: "mine", CreatedAt: created}
+	for _, header := range []string{"", "Bearer wrong", "Basic " + goodToken, "Bearer ", "Bearer"} {
+		store := &doneStore{rows: []storedRow{{owner: "user-1", note: mine}}}
+		r := httptest.NewRequest(http.MethodPatch, "/api/notes/7", strings.NewReader(`{"done":true}`))
+		r.Header.Set("Content-Type", "application/json")
+		if header != "" {
+			r.Header.Set("Authorization", header)
+		}
+		w := httptest.NewRecorder()
+		Routes(store, fakeAuth{}, "run-1").ServeHTTP(w, r)
+		if w.Code != http.StatusUnauthorized || w.Body.String() != "{\"message\":\"Sign-in required\"}\n" {
+			t.Fatalf("PATCH %q: got %d %q", header, w.Code, w.Body.String())
+		}
+		if !strings.HasPrefix(w.Header().Get("WWW-Authenticate"), "Bearer") {
+			t.Fatalf("PATCH %q: challenge %q", header, w.Header().Get("WWW-Authenticate"))
+		}
+		if store.calls != 0 {
+			t.Fatalf("PATCH %q: %d writes made by an unauthenticated request", header, store.calls)
+		}
+		if store.rows[0].note != mine || store.rows[0].note.Done {
+			t.Fatalf("PATCH %q: the note's flag moved to %v without a signed-in caller", header, store.rows[0].note.Done)
+		}
+	}
+}
+
+// The route is registered on the note path for PATCH alone, and it is the
+// signed-in wrapper that hands it the owner: the token's subject - never a
+// caller-supplied value - is what the write is scoped to, and no neighbouring
+// method reaches it.
+func TestPatchRouteIsRegisteredSignedInAndScopedToTheCaller(t *testing.T) {
+	store := &fakeStore{doneNote: Note{ID: "7", Label: "mine", CreatedAt: created, Done: true}}
+	if got := patchedNote(store, "7", `{"done":true}`, goodToken); got.Code != http.StatusOK || store.doneOwner != "user-1" {
+		t.Fatalf("signed-in PATCH: got %d %q owner %q", got.Code, got.Body.String(), store.doneOwner)
+	}
+	anonymous := &fakeStore{}
+	if got := patchedNote(anonymous, "7", `{"done":true}`, ""); got.Code != http.StatusUnauthorized || anonymous.doneCalls != 0 {
+		t.Fatalf("anonymous PATCH: got %d, %d writes", got.Code, anonymous.doneCalls)
+	}
+	h := Routes(&fakeStore{}, fakeAuth{}, "run-1")
+	if got := request(h, http.MethodPut, "/api/notes/7", `{"done":true}`, goodToken); got.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("PUT /api/notes/7: %d, want 405", got.Code)
+	}
+	if got := request(h, http.MethodPatch, "/api/notes", `{"done":true}`, goodToken); got.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("PATCH /api/notes: %d, want 405", got.Code)
+	}
+	// The note path is registered for PATCH alone, so every other method on it is
+	// refused rather than quietly served: no single-note read was asked for.
+	if got := request(h, http.MethodGet, "/api/notes/7", "", goodToken); got.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("GET /api/notes/7: %d, want 405", got.Code)
+	}
+}
+
+// The flag write is the only thing the route does with storage: a storage failure
+// that is not the not-found sentinel answers the private 500, never the 404 that
+// would tell a caller their note was missing, and never the error itself.
+func TestPatchPersistenceFailureIsPrivate(t *testing.T) {
+	store := &fakeStore{doneErr: errors.New("password=private")}
+	got := patchedNote(store, "7", `{"done":true}`, goodToken)
+	if got.Code != http.StatusInternalServerError || got.Body.String() != "{\"message\":\"Service unavailable\"}\n" {
+		t.Fatalf("got %d %q", got.Code, got.Body.String())
+	}
+	if store.doneCalls != 1 {
+		t.Fatalf("%d writes attempted", store.doneCalls)
+	}
+}
