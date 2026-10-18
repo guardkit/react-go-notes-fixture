@@ -14,14 +14,13 @@ Feature: Notes List Done-State Visibility
     Given the web app is running
     And I am viewing the notes list
 
-  # Why: FEAT-PO-001 — the list's row data must carry each note's done flag so the view can present it without opening the note
+  # Why: FEAT-PO-001 — the list shows each note's done status up front, so the user reads it in the list rather than opening the note
   # [ASSUMPTION: confidence=low] The web app has a single notes list view whose rows are uniform, so one indicator implementation covers the request
-  # [ASSUMPTION: confidence=low] The notes list row payload already includes the note's boolean done flag, so no backend change is needed to expose it
+  # [ASSUMPTION: confidence=low] The done flag is already on the list payload so the status shows without opening the note
   @key-example @smoke
-  Scenario: The notes list carries each note's done flag in its row data
+  Scenario: The notes list shows each note's done status without opening the note
     Given the notes list is loaded
-    Then each row's data includes that note's done flag
-    And the done flag is available at row render time without a per-note follow-up request
+    Then each row presents that note's done status for the user to read without opening the note
 
   # Why: FEAT-PO-002 — the literal ask: a done note shows its indicator in the done state
   # [ASSUMPTION: confidence=low] The note model already persists a boolean done flag that the web app can read; the request is to display it, not to introduce it
@@ -29,13 +28,13 @@ Feature: Notes List Done-State Visibility
   @key-example @smoke
   Scenario: A done note shows its indicator in the done state
     Given the notes list contains a note whose done flag is set
-    Then that row shows the done indicator in its done state
+    Then that row presents the indicator in its done state
 
-  # Why: FEAT-PO-002 — an open note shows the not-done state rather than omitting the indicator, so absence of markup is never the only signal
+  # Why: FEAT-PO-002 — an open note shows the not-done state rather than leaving the status blank, so the user still sees a status
   @key-example
   Scenario: An open note shows the indicator in the not-done state
     Given the notes list contains a note whose done flag is not set
-    Then that row shows the done indicator in its not-done state
+    Then that row presents the indicator in its not-done state
 
   # Why: FEAT-PO-003 — the second clause of the request: done notes are visually distinguished by more than one channel
   # [ASSUMPTION: confidence=low] The done treatment combines a check mark plus a 'Done' label with a row-level treatment such as muted title weight or strikethrough
@@ -43,34 +42,34 @@ Feature: Notes List Done-State Visibility
   Scenario: A done note is visually distinguished from open notes by more than one channel
     Given the notes list contains a note whose done flag is set
     Then that row shows an explicit done affordance with a "Done" label
-    And that row's title carries a row-level done treatment such as muted weight or strikethrough
+    And that row's title carries a row-level done treatment that reads differently from an open title
 
   # Why: FEAT-PO-002 — the indicator sits in a fixed position across every row so the eye can scan a column of statuses
   @key-example
   Scenario: The done indicator appears in a consistent position across all rows
     Given the notes list contains several notes
-    Then every row shows the done indicator in the same position relative to the note title
+    Then every row presents the done indicator in the same position relative to the note title
 
   # Why: FEAT-PO-001 — a note with no explicit done value is treated as not done rather than rendering an unknown or broken state
   # [ASSUMPTION: confidence=low] A note with no explicit done value is treated as not done rather than rendering an unknown or broken state
   @boundary
   Scenario: A note with no explicit done value is treated as not done
     Given the notes list contains a note with no explicit done value
-    Then that row shows the done indicator in its not-done state
+    Then that row presents the done indicator in its not-done state
 
   # Why: FEAT-PO-001 — the row's done value reflects the note's current stored flag after a refresh, including flags changed elsewhere since the last load
   @boundary
   Scenario: The row's done value reflects the note's current stored flag after a refresh
     Given a note's done flag was changed elsewhere in the app since the last load
     When I refresh the notes list
-    Then that row's done value reflects the note's current stored flag
+    Then that row presents the note's current done status
 
-  # Why: FEAT-PO-001 — pagination must carry the done flag on every page, not just the first
+  # Why: FEAT-PO-001 — pagination must carry the done status on every page, not just the first
   @boundary
-  Scenario: Paginated rows carry the done flag on every page
+  Scenario: Paginated rows carry the done status on every page
     Given the notes list spans more than one page
     When I navigate to the next page
-    Then each row on that page includes that note's done flag
+    Then each row on that page presents its note's done status without opening the note
 
   # Why: FEAT-PO-003 — a mixed list renders both states side by side without ambiguity about which row is which
   # [ASSUMPTION: confidence=low] Done notes remain in the default list view mixed with open notes rather than being grouped, dimmed, or moved to the end
@@ -78,28 +77,28 @@ Feature: Notes List Done-State Visibility
   Scenario: A mixed list renders done and open rows side by side without ambiguity
     Given the notes list contains both done and open notes
     Then each done row is presented as done and each open row is presented as not done
-    And no row is ambiguous about its state
+    And the user can tell from each row which state it is in with no ambiguity
 
   # Why: FEAT-PO-001 — the list is read-only with respect to the done flag; rendering must not mutate it
   @negative
-  Scenario: Viewing the list does not mutate any note's done flag
+  Scenario: Viewing the list does not change any note's done flag
     Given the notes list is loaded
     When I view the notes list
-    Then no note's done flag is changed
+    Then no note's done flag is changed from before viewing the list
 
   # Why: FEAT-PO-002 — the indicator must coexist with existing row content without displacing or truncating it
   @negative
   Scenario: The done indicator does not displace or truncate existing row content
     Given the notes list contains a note with a title, preview, and timestamp
-    Then the done indicator coexists with the title, preview, and timestamp
-    And none of them is displaced or truncated
+    Then the user can read the title, preview, and timestamp
+    And none of them is displaced or truncated by the done indicator
 
   # Why: FEAT-PO-002 — the row layout must hold at the narrowest supported viewport
   # [ASSUMPTION: confidence=low] The narrowest supported viewport is a single mobile-class width at which the row layout must hold
   @negative
   Scenario: The row layout holds at the narrowest supported viewport
     Given the notes list is rendered at the narrowest supported viewport
-    Then the done indicator and the existing row content remain visible and unbroken
+    Then the user can still see the done indicator and the rest of the row, intact
 
   # Why: FEAT-PO-004 — a screen-reader user hears each note's completion status in row order, named explicitly
   # [ASSUMPTION: confidence=low] The accessible announcement names the state explicitly as 'Done' or 'Not done'
@@ -107,20 +106,21 @@ Feature: Notes List Done-State Visibility
   Scenario: A screen-reader user hears each note's completion status in row order
     Given the notes list contains several notes
     When a screen-reader user navigates the notes list
-    Then each note's completion status is announced in row order alongside the note title
+    Then the user hears each note's completion status stated in row order alongside the note title
     And the announcement names the state explicitly as "Done" or "Not done"
 
-  # Why: FEAT-PO-004 — an iconographic indicator is hidden from the accessibility tree so the text equivalent carries the meaning without duplication
+  # Why: FEAT-PO-004 — the iconographic indicator adds no duplicate status announcement; the written label carries the meaning once
   @edge-case
-  Scenario: An iconographic done indicator is hidden from the accessibility tree
-    Given the done indicator is rendered as an icon
-    Then the icon is hidden from the accessibility tree
-    And the text equivalent carries the completion meaning
+  Scenario: The iconographic done indicator adds no duplicate status announcement
+    Given the done indicator is rendered as an icon alongside a written label
+    When a screen-reader user reads the row's done indicator
+    Then the user hears the completion status stated once, from the written label
+    But the user does not hear the icon announced as a second, redundant status
 
-  # Why: FEAT-PO-005 — under forced-colours / high-contrast rendering, done rows stay distinguishable through non-colour means
-  # [ASSUMPTION: confidence=low] Under forced-colours / high-contrast mode, done rows stay distinguishable via border, underline, or the persisted text label
+  # Why: FEAT-PO-005 — when the browser forces high-contrast colours, done rows stay distinguishable through shape or text
+  # [ASSUMPTION: confidence=low] In high-contrast rendering, done rows stay distinguishable via border, underline, or the persisted text label
   @edge-case
-  Scenario: Done rows remain distinguishable under forced-colours rendering
-    Given the browser renders in forced-colours or high-contrast mode
-    Then done rows remain distinguishable from open rows through non-colour means such as border, underline, or the persisted text label
-    And the done indicator's icon and "Done" label are not suppressed by user-agent colour overrides
+  Scenario: Done rows remain distinguishable by shape or text in high-contrast rendering
+    Given the browser forces high-contrast colours that override the page's colours
+    Then done rows remain distinguishable from open rows by shape or text rather than by colour alone
+    And the done indicator's icon and "Done" label stay visible

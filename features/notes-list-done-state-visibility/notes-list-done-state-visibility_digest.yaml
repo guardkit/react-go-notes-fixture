@@ -1,51 +1,51 @@
 feature: notes-list-done-state-visibility
 generated: "2026-07-09T14:32:00Z"
 scenarios:
-  - title: "The notes list carries each note's done flag in its row data"
+  - title: "The notes list shows each note's done status without opening the note"
     tags: ["@key-example", "@smoke"]
-    sentence: "Loading the notes list gives every row that note's done flag up front, so the list can show completion without opening the note."
+    sentence: "Loading the notes list lets the user read every row's done status right there in the list, without opening the note."
   - title: "A done note shows its indicator in the done state"
     tags: ["@key-example", "@smoke"]
-    sentence: "A note marked done shows its status indicator in the done state."
+    sentence: "A note marked done shows its status indicator to the user in the done state."
   - title: "An open note shows the indicator in the not-done state"
     tags: ["@key-example"]
-    sentence: "A note that is not done still shows the indicator in the not-done state, rather than leaving the status blank."
+    sentence: "A note that is not done still shows the user the indicator in the not-done state, rather than leaving the status blank."
   - title: "A done note is visually distinguished from open notes by more than one channel"
     tags: ["@key-example"]
-    sentence: "A done note stands out from open notes through more than one visual cue, so it reads as done even without relying on colour."
+    sentence: "A done note stands out to the user from open notes through more than one visual cue, so it reads as done even without relying on colour."
   - title: "The done indicator appears in a consistent position across all rows"
     tags: ["@key-example"]
-    sentence: "Every row shows the status indicator in the same spot next to the title, so the statuses line up in a scannable column."
+    sentence: "Every row shows the status indicator in the same spot next to the title, so the user can scan the statuses down a column."
   - title: "A note with no explicit done value is treated as not done"
     tags: ["@boundary"]
-    sentence: "A note that has no recorded done value is shown as not done instead of an unknown or broken state."
+    sentence: "A note that has no recorded done value is shown to the user as not done, rather than as an unknown or broken state."
   - title: "The row's done value reflects the note's current stored flag after a refresh"
     tags: ["@boundary"]
-    sentence: "After a refresh, a row shows the note's current done status even if it was changed elsewhere in the app since the last load."
-  - title: "Paginated rows carry the done flag on every page"
+    sentence: "After a refresh, a row shows the user the note's current done status even if it was changed elsewhere in the app since the last load."
+  - title: "Paginated rows carry the done status on every page"
     tags: ["@boundary"]
-    sentence: "When the list spans several pages, every page's rows carry each note's done flag, not just the first page."
+    sentence: "When the list spans several pages, every page's rows show the user each note's done status without needing to open the note."
   - title: "A mixed list renders done and open rows side by side without ambiguity"
     tags: ["@boundary"]
-    sentence: "When done and open notes appear together, each row is clearly either done or not done with no confusion about which is which."
-  - title: "Viewing the list does not mutate any note's done flag"
+    sentence: "When done and open notes appear together, the user can tell from each row whether it is done or not done, with no confusion about which is which."
+  - title: "Viewing the list does not change any note's done flag"
     tags: ["@negative"]
     sentence: "Simply viewing the notes list never changes any note's done status."
   - title: "The done indicator does not displace or truncate existing row content"
     tags: ["@negative"]
-    sentence: "The status indicator shares the row with the title, preview, and timestamp without pushing any of them out or cutting them off."
+    sentence: "The status indicator shares the row with the title, preview, and timestamp, leaving all of them readable and intact."
   - title: "The row layout holds at the narrowest supported viewport"
     tags: ["@negative"]
-    sentence: "At the narrowest supported screen width, the status indicator and the rest of the row stay visible and intact."
+    sentence: "At the narrowest supported screen width, the user can still see the status indicator and the rest of the row, intact."
   - title: "A screen-reader user hears each note's completion status in row order"
     tags: ["@edge-case"]
-    sentence: "A screen-reader user moving through the list hears each note's status stated plainly as done or not done, in the order the rows appear."
-  - title: "An iconographic done indicator is hidden from the accessibility tree"
+    sentence: "As a screen-reader user moves through the list, the user hears each note's status stated plainly as done or not done, in the order the rows appear."
+  - title: "The iconographic done indicator adds no duplicate status announcement"
     tags: ["@edge-case"]
-    sentence: "When the status is shown as an icon, the icon is hidden from assistive technology and the written label carries the meaning instead."
-  - title: "Done rows remain distinguishable under forced-colours rendering"
+    sentence: "When the status is shown as an icon next to a written label, a screen-reader user hears the status stated once and is not given a duplicate announcement of it."
+  - title: "Done rows remain distinguishable by shape or text in high-contrast rendering"
     tags: ["@edge-case"]
-    sentence: "Even when the browser forces high-contrast colours, done rows stay distinguishable from open rows by means other than colour."
+    sentence: "Even when the browser forces high-contrast colours, the user can still tell done rows apart from open rows by shape or text rather than by colour alone."
 assumptions:
   - id: ASSUM-001
     text: "The notes list row payload already includes the note's boolean done flag, so no backend change is needed to expose it"
@@ -60,7 +60,7 @@ assumptions:
     text: "The accessible announcement names the state explicitly as 'Done' or 'Not done'"
     basis: "FEAT-PO-004 gives 'for example' wording. Chose between (a) the labels 'Done' / 'Not done', or (b) alternative explicit state wording."
   - id: ASSUM-005
-    text: "Under forced-colours / high-contrast mode, done rows stay distinguishable via border, underline, or the persisted text label"
+    text: "In high-contrast rendering, done rows stay distinguishable via border, underline, or the persisted text label"
     basis: "FEAT-PO-005 lists examples ('such as'). Chose between (a) border/underline/persisted text label, or (b) other non-colour differentiators."
   - id: ASSUM-006
     text: "The narrowest supported viewport is a single mobile-class width at which the row layout must hold"

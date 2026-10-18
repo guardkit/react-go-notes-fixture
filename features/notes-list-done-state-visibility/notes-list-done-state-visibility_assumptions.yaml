@@ -4,7 +4,7 @@ stack: generic
 review_required: true
 assumptions:
 - id: ASSUM-001
-  scenario: The notes list carries each note's done flag in its row data
+  scenario: The notes list shows each note's done status without opening the note
   assumption: The notes list row payload already includes the note's boolean done
     flag, so no backend change is needed to expose it
   confidence: low
@@ -41,9 +41,10 @@ assumptions:
     / 'Not done', or (b) alternative explicit state wording.
   human_response: deferred
 - id: ASSUM-005
-  scenario: Done rows remain distinguishable under forced-colours rendering
-  assumption: Under forced-colours / high-contrast mode, done rows stay distinguishable
-    via border, underline, or the persisted text label
+  scenario: Done rows remain distinguishable by shape or text under high-contrast
+    rendering
+  assumption: In high-contrast rendering, done rows stay distinguishable via border,
+    underline, or the persisted text label
   confidence: low
   basis: FEAT-PO-005 lists examples ('such as'). Chose between (a) border/underline/persisted
     text label, or (b) other non-colour differentiators.
@@ -58,7 +59,7 @@ assumptions:
     or (b) a specific documented minimum width.
   human_response: deferred
 - id: ASSUM-007
-  scenario: The notes list carries each note's done flag in its row data
+  scenario: The notes list shows each note's done status without opening the note
   assumption: The web app has a single notes list view whose rows are uniform, so
     one indicator implementation covers the request
   confidence: low
