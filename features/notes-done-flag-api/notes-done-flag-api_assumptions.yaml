@@ -4,15 +4,6 @@ stack: generic
 review_required: true
 assumptions:
 - id: ASSUM-001
-  scenario: A non-boolean done value is rejected
-  assumption: A non-boolean done value in the request body is rejected with a 400
-    validation error
-  confidence: low
-  basis: The input states the done flag accepts only boolean true/false but does not
-    state the status for invalid body values; the alternative considered was 422 Unprocessable
-    Entity
-  human_response: deferred
-- id: ASSUM-002
   scenario: An unauthenticated request is refused before any note mutation
   assumption: An unauthenticated PATCH request is answered with 401 sign-in required
   confidence: low
@@ -20,16 +11,7 @@ assumptions:
     missing session; the alternatives considered were 401 (consistent with the existing
     GET /api/notes 401 SignInRequired) and 404 (to avoid leaking endpoint existence)
   human_response: deferred
-- id: ASSUM-003
-  scenario: A syntactically malformed note id is answered with 404
-  assumption: A syntactically malformed {id} is answered with 404 rather than a validation
-    error
-  confidence: low
-  basis: The input does not constrain the {id} format or define behaviour for malformed
-    ids; the alternatives considered were 404 (treat as not-found) and 400 (treat
-    as malformed input)
-  human_response: deferred
-- id: ASSUM-004
+- id: ASSUM-002
   scenario: The updated note representation carries its identity and new done state
   assumption: The updated-note response includes at minimum the note's id and done
     state
@@ -38,7 +20,7 @@ assumptions:
     the full field set; the alternatives considered were a minimal {id, done} body
     and a full note representation including label and created-at
   human_response: deferred
-- id: ASSUM-005
+- id: ASSUM-003
   scenario: Owner sets a note's done flag to true
   assumption: A successful update returns HTTP 200 with the updated note as the JSON
     response body
@@ -47,7 +29,7 @@ assumptions:
     the status code; the alternatives considered were 200 with a body (chosen, consistent
     with the existing GET /api/notes 200 pattern) and 204 No Content
   human_response: deferred
-- id: ASSUM-006
+- id: ASSUM-004
   scenario: A note id that does not exist is answered with 404
   assumption: Note ids are opaque strings; no specific format (integer, UUID) is enforced
   confidence: low
