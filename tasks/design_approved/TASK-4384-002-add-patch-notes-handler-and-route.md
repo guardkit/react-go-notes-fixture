@@ -1,14 +1,15 @@
 ---
-id: TASK-4384-002
-title: Add the PATCH /api/notes/{id} handler and route
-task_type: feature
-parent_review: TASK-REV-4384
-feature_id: FEAT-4384
-wave: 2
-implementation_mode: task-work
 complexity: 6
 dependencies:
-  - TASK-4384-001
+- TASK-4384-001
+feature_id: FEAT-4384
+id: TASK-4384-002
+implementation_mode: task-work
+parent_review: TASK-REV-4384
+status: design_approved
+task_type: feature
+title: Add the PATCH /api/notes/{id} handler and route
+wave: 2
 ---
 
 Add the PATCH /api/notes/{id} route and handler that lets the signed-in owner set a note's done flag to true or false, returns the updated note as 200, and answers an indistinguishable 404 for a note that does not exist or belongs to someone else.
