@@ -1,0 +1,48 @@
+format_version: '2.0'
+task_id: TASK-7FC3-002
+registered_at:
+  sha: 32c742daa8140ea0997b6e48144b857f292375fc
+  date: '2026-10-18'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: notes-done-toggle-AC-001
+  text: Ticking a note in the list marks it as done
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-toggle-AC-002
+  text: Unticking a done note in the list returns it to not done
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-toggle-AC-003
+  text: The completion control is operable without opening the note detail view
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-toggle-AC-004
+  text: Ticking a note saves the done state through PATCH /api/notes/{id}
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-toggle-AC-005
+  text: Unticking a note saves the not-done state through PATCH /api/notes/{id}
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-toggle-AC-006
+  text: A note ticked as done appears ticked after a reload
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: notes-done-toggle-AC-007
+  text: A note returned to not done appears unticked after a reload
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation
