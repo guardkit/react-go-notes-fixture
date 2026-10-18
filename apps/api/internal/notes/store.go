@@ -16,8 +16,18 @@ import (
 // explicit migrations in ../../migrations; the API never migrates on start.
 type PGStore struct{ Pool *pgxpool.Pool }
 
+// The adapter is the storage behind every call the handler makes, so one
+// missing method is a build failure here rather than a handler with no storage.
+var _ Store = PGStore{}
+
 // listLimit bounds one page of notes; the fixture has no paging.
 const listLimit = 100
+
+// ErrNoteNotFound reports that no note row carries the asked-for id for the
+// owner that asked. It is the one answer for a note that was never written and
+// for a note belonging to someone else: the owner is part of the statement that
+// decides whether a row is touched, so the two cases cannot be told apart.
+var ErrNoteNotFound = errors.New("note not found")
 
 // storageTitle is the last step before a note title is written: the standard
 // library trim of leading and trailing whitespace, with the interior left
@@ -93,4 +103,37 @@ func (s PGStore) List(ctx context.Context, owner string) ([]Note, error) {
 		return nil, fmt.Errorf("read notes: %w", err)
 	}
 	return list, nil
+}
+
+// UpdateDone sets the done flag of owner's note id and answers the note as the
+// row now holds it. The owner sits in the WHERE clause beside the id - the same
+// scoping List gives the read - so the database, not the caller, decides whether
+// the row is the caller's to change: a foreign note and a missing note match no
+// row and both answer ErrNoteNotFound, never a different answer. Only the done
+// column is written; the label and the creation time belong to the create path
+// and are read back untouched from RETURNING.
+func (s PGStore) UpdateDone(ctx context.Context, owner, id string, done bool) (Note, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	// The id is a decimal string on the wire and a BIGINT in the table. One that
+	// is no number at all matches no row of any owner, so it answers the same
+	// not-found as a note that was never written rather than a different failure.
+	noteID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return Note{}, fmt.Errorf("%w: id %q is not a note", ErrNoteNotFound, id)
+	}
+	var note Note
+	var rowID int64
+	if err := s.Pool.QueryRow(queryCtx,
+		"UPDATE notes SET done = $3 WHERE id = $1 AND owner_sub = $2 RETURNING id, label, created_at, done",
+		noteID, owner, done,
+	).Scan(&rowID, &note.Label, &note.CreatedAt, &note.Done); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Note{}, ErrNoteNotFound
+		}
+		return Note{}, fmt.Errorf("update note done flag: %w", err)
+	}
+	note.ID = strconv.FormatInt(rowID, 10)
+	note.CreatedAt = note.CreatedAt.UTC()
+	return note, nil
 }

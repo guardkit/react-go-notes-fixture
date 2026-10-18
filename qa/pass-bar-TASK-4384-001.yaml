@@ -1,0 +1,38 @@
+format_version: '2.0'
+task_id: TASK-4384-001
+registered_at:
+  sha: 05e4a4d337091aa9e54910458e998e7dc439d322
+  date: '2026-10-18'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: patch-api-notes-id-toggles-the-done-flag-for-the-signed-in-owner-AC-001
+  text: Owner marks a note done and receives the updated note
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: patch-api-notes-id-toggles-the-done-flag-for-the-signed-in-owner-AC-002
+  text: Owner marks a note not done and receives the updated note
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: patch-api-notes-id-toggles-the-done-flag-for-the-signed-in-owner-AC-003
+  text: Only the done flag is mutated by the update
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: patch-api-notes-id-toggles-the-done-flag-for-the-signed-in-owner-AC-004
+  text: Updating a note that does not exist answers 404
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: patch-api-notes-id-toggles-the-done-flag-for-the-signed-in-owner-AC-005
+  text: Updating another user's note answers 404
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation

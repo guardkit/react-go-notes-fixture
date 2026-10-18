@@ -1,0 +1,62 @@
+id: FEAT-4384
+name: "PATCH /api/notes/{id} toggles the done flag for the signed-in owner"
+description: "Add PATCH /api/notes/{id} so the signed-in owner can set a note's done flag to true or false; it returns the updated note, and answers 404 for a note that does not exist or belongs to someone else"
+created: "2026-07-09T14:32:00Z"
+status: planned
+complexity: 6
+estimated_tasks: 4
+feature_files:
+  - features/patch-api-notes-id-toggles-the-done-flag-for-the-signed-in-owner/patch-api-notes-id-toggles-the-done-flag-for-the-signed-in-owner.feature
+tasks:
+  - id: TASK-4384-001
+    name: "Add the owner-scoped done-flag update to the notes store"
+    file_path: "tasks/backlog/patch-notes-done-flag/TASK-4384-001-add-owner-scoped-done-update-to-store.md"
+    complexity: 4
+    dependencies: []
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 60
+  - id: TASK-4384-002
+    name: "Add the PATCH /api/notes/{id} handler and route"
+    file_path: "tasks/backlog/patch-notes-done-flag/TASK-4384-002-add-patch-notes-handler-and-route.md"
+    complexity: 6
+    dependencies:
+      - TASK-4384-001
+    status: pending
+    implementation_mode: task-work
+    estimated_minutes: 90
+  - id: TASK-4384-003
+    name: "Document PATCH /api/notes/{id} in the OpenAPI contract"
+    file_path: "tasks/backlog/patch-notes-done-flag/TASK-4384-003-document-patch-notes-in-openapi.md"
+    complexity: 3
+    dependencies:
+      - TASK-4384-002
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 45
+  - id: TASK-4384-004
+    name: "Add the web client for the done-flag toggle"
+    file_path: "tasks/backlog/patch-notes-done-flag/TASK-4384-004-add-web-client-for-done-flag-toggle.md"
+    complexity: 3
+    dependencies:
+      - TASK-4384-002
+      - TASK-4384-003
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 45
+orchestration:
+  parallel_groups:
+    - - TASK-4384-001
+    - - TASK-4384-002
+    - - TASK-4384-003
+    - - TASK-4384-004
+  estimated_duration_minutes: 240
+  recommended_parallel: 2
+scenario_owners:
+  "Owner marks a note done and receives the updated note": TASK-4384-002
+  "Owner marks a note not done and receives the updated note": TASK-4384-002
+  "Only the done flag is mutated by the update": TASK-4384-002
+  "Updating a note that does not exist answers 404": TASK-4384-002
+  "Updating another user's note answers 404": TASK-4384-002
+  "Setting done to its current value succeeds idempotently": TASK-4384-002
+  "The toggled done flag persists for a later read": TASK-4384-002

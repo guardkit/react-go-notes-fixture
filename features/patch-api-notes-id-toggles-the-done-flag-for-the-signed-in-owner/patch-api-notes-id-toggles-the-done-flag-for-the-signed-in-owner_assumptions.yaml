@@ -1,0 +1,26 @@
+feature: PATCH /api/notes/{id} toggles the done flag for the signed-in owner
+generated: '2026-07-09T14:32:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: Owner marks a note done and receives the updated note
+  assumption: The returned updated note includes id, label, and done
+  confidence: low
+  basis: 'Open question in the input: exact representation of the returned note (id,
+    text/label, done, timestamps); chose id/label/done over including timestamps'
+  human_response: deferred
+- id: ASSUM-002
+  scenario: Owner marks a note done and receives the updated note
+  assumption: The success response status is 200
+  confidence: low
+  basis: Request says 'returns the updated note' without a status; chose 200 (OK)
+    over 204 (No Content)
+  human_response: deferred
+- id: ASSUM-003
+  scenario: Owner marks a note done and receives the updated note
+  assumption: The note identifier is a string id used in the path
+  confidence: low
+  basis: Request uses {id} without stating its type; chose string id over numeric
+    id
+  human_response: deferred

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,13 +19,16 @@ import (
 const goodToken = "good-token"
 
 type fakeStore struct {
-	calls int
-	owner string
-	label string
-	ctx   context.Context
-	note  Note
-	list  []Note
-	err   error
+	calls  int
+	owner  string
+	label  string
+	id     string
+	done   bool
+	ctx    context.Context
+	note   Note
+	list   []Note
+	err    error
+	update Note
 }
 
 func (f *fakeStore) Create(ctx context.Context, owner, label string) (Note, error) {
@@ -37,6 +41,16 @@ func (f *fakeStore) List(ctx context.Context, owner string) ([]Note, error) {
 	f.calls++
 	f.ctx, f.owner = ctx, owner
 	return f.list, f.err
+}
+
+// UpdateDone records the owner, the id and the flag it was handed, so a test
+// can see that the update reached storage scoped to the signed-in owner and
+// nothing else. The note it answers is the one the test put in update, and the
+// not-found signal is handed over through err like any other failure.
+func (f *fakeStore) UpdateDone(ctx context.Context, owner, id string, done bool) (Note, error) {
+	f.calls++
+	f.ctx, f.owner, f.id, f.done = ctx, owner, id, done
+	return f.update, f.err
 }
 
 // fakeAuth accepts exactly goodToken as subject "user-1"; real token checks
@@ -228,6 +242,19 @@ func (s *storingStore) Create(_ context.Context, owner, label string) (Note, err
 }
 
 func (s *storingStore) List(context.Context, string) ([]Note, error) { return []Note{}, nil }
+
+// UpdateDone models the adapter's scoped statement: the row is decided by the
+// id and the owner together, the flag is the only thing it changes, and the note
+// comes back as the row now holds it. An id the owner does not hold - another
+// owner's note or one never written - answers the one not-found signal.
+func (s *storingStore) UpdateDone(_ context.Context, owner, id string, done bool) (Note, error) {
+	s.calls++
+	s.owner = owner
+	if id != "1" || owner != "user-1" {
+		return Note{}, ErrNoteNotFound
+	}
+	return Note{ID: id, Label: s.label, CreatedAt: created, Done: done}, nil
+}
 
 // createTitle asks the real create handler to store one title, and reports the
 // title the store was handed and the title the response carried.
@@ -598,5 +625,89 @@ func TestNoteFixtureCarriesTheDoneFlag(t *testing.T) {
 		if note.ID != "1" || note.Label != "hello" || !note.CreatedAt.Equal(created) {
 			t.Fatalf("%s: note %+v lost the fields the store reads back", tc.name, note)
 		}
+	}
+}
+
+// The update the storage layer now offers is one the caller cannot misuse: it
+// takes the signed-in owner, the note id and the flag - and nothing else, so a
+// label has no parameter to travel in - and it answers the note itself beside
+// the error, so what the caller gets is the row as storage holds it. The
+// PostgreSQL adapter carries the same method, which is what makes the store the
+// handler talks to the storage layer rather than a second opinion on it.
+func TestStoreOffersAnOwnerScopedDoneUpdate(t *testing.T) {
+	storeType := reflect.TypeOf((*Store)(nil)).Elem()
+	method, ok := storeType.MethodByName("UpdateDone")
+	if !ok {
+		names := []string{}
+		for m := 0; m < storeType.NumMethod(); m++ {
+			names = append(names, storeType.Method(m).Name)
+		}
+		t.Fatalf("the store offers no owner-scoped done update, only %v", names)
+	}
+	fn := method.Type
+	if fn.NumIn() != 4 {
+		t.Fatalf("UpdateDone takes %d parameters, want the context, the owner, the id and the flag", fn.NumIn())
+	}
+	if fn.In(0).String() != "context.Context" {
+		t.Fatalf("UpdateDone takes its first parameter as %s, want the request context", fn.In(0))
+	}
+	for _, param := range []struct {
+		index int
+		what  string
+		kind  reflect.Kind
+	}{
+		{1, "the owner", reflect.String},
+		{2, "the note id", reflect.String},
+		{3, "the flag", reflect.Bool},
+	} {
+		if kind := fn.In(param.index).Kind(); kind != param.kind {
+			t.Fatalf("UpdateDone takes %s as %s, want %s", param.what, kind, param.kind)
+		}
+	}
+	if fn.NumOut() != 2 || fn.Out(0).String() != "notes.Note" || fn.Out(1).String() != "error" {
+		t.Fatalf("UpdateDone answers (%s, %s), want the updated note and an error", fn.Out(0), fn.Out(1))
+	}
+
+	// The adapter behind the boundary is the one that runs the statement, so it
+	// must carry the very same method or the handler's call has no storage.
+	adapter, ok := reflect.TypeOf(PGStore{}).MethodByName("UpdateDone")
+	if !ok {
+		t.Fatal("the PostgreSQL adapter offers no UpdateDone, so the update reaches nowhere")
+	}
+	if adapter.Type.NumIn() != fn.NumIn()+1 || adapter.Type.Out(0).String() != "notes.Note" {
+		t.Fatalf("the adapter's UpdateDone is %s, want the store's own shape on the receiver", adapter.Type)
+	}
+}
+
+// One absent note, one answer: the not-found signal is a value of its own, so
+// the caller tells it from a real storage failure with errors.Is, and a driver
+// wrapping it cannot hide it. The update reaches storage as the owner, the id
+// and the flag - never as a label - so the flag is the only thing a caller can
+// hand over on this path.
+func TestUpdateDoneAnswersOneNotFoundSignal(t *testing.T) {
+	if !errors.Is(fmt.Errorf("wrapped: %w", ErrNoteNotFound), ErrNoteNotFound) {
+		t.Fatal("the not-found signal is lost when the adapter wraps it, so a foreign note could answer differently from a missing one")
+	}
+	if errors.Is(errors.New("connection exhausted"), ErrNoteNotFound) {
+		t.Fatal("a storage failure reads as the not-found signal, so a real outage would answer 404")
+	}
+
+	store := &fakeStore{err: ErrNoteNotFound}
+	if _, err := store.UpdateDone(context.Background(), "user-1", "foreign-1", true); !errors.Is(err, ErrNoteNotFound) {
+		t.Fatalf("update of a note the owner does not hold answered %v, want the not-found signal", err)
+	}
+	if store.calls != 1 || store.owner != "user-1" || store.id != "foreign-1" || !store.done {
+		t.Fatalf("the update reached storage %d times as owner %q for id %q with flag %v", store.calls, store.owner, store.id, store.done)
+	}
+
+	// The other direction of the flag travels the same single path.
+	updated := Note{ID: "7", Label: "buy milk", CreatedAt: created, Done: false}
+	store = &fakeStore{update: updated}
+	got, err := store.UpdateDone(context.Background(), "user-1", "7", false)
+	if err != nil || got != updated {
+		t.Fatalf("update answered %+v, %v, want the updated note", got, err)
+	}
+	if store.done {
+		t.Fatal("the update carried the flag as set, so clearing a note could never reach storage")
 	}
 }

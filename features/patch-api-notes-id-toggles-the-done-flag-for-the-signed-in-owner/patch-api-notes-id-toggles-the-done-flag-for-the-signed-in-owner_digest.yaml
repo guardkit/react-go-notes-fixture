@@ -1,0 +1,37 @@
+feature: patch-api-notes-id-toggles-the-done-flag-for-the-signed-in-owner
+generated: "2026-07-09T14:32:00Z"
+endpoint:
+  method: PATCH
+  path: /api/notes/{id}
+scenarios:
+  - title: "Owner marks a note done and receives the updated note"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A signed-in owner who marks their note done gets a response whose body is the note with the done flag now true and the label still present."
+  - title: "Owner marks a note not done and receives the updated note"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A signed-in owner who marks their note not done gets a response whose body is the note with the done flag now false and the label still present."
+  - title: "Only the done flag is mutated by the update"
+    tags: ["@key-example"]
+    sentence: "Toggling the done flag leaves the note's label untouched in the returned response body."
+  - title: "Updating a note that does not exist answers 404"
+    tags: ["@negative", "@smoke"]
+    sentence: "Trying to update a note id that does not exist gets a 404 whose body gives no hint about whether the note exists or belongs to someone else."
+  - title: "Updating another user's note answers 404"
+    tags: ["@negative", "@smoke"]
+    sentence: "Trying to update a note that belongs to someone else gets a 404 whose body gives no hint about whether the note exists or belongs to someone else."
+  - title: "Setting done to its current value succeeds idempotently"
+    tags: ["@edge-case"]
+    sentence: "Marking a note done when it is already done still returns the note with done true in the response body."
+  - title: "The toggled done flag persists for a later read"
+    tags: ["@edge-case"]
+    sentence: "After toggling the done flag, the owner's note list shows the note with the new done state."
+assumptions:
+  - id: ASSUM-001
+    text: "The returned updated note includes id, label, and done"
+    basis: "Open question in the input: exact representation of the returned note (id, text/label, done, timestamps); chose id/label/done over including timestamps"
+  - id: ASSUM-002
+    text: "The success response status is 200"
+    basis: "Request says 'returns the updated note' without a status; chose 200 (OK) over 204 (No Content)"
+  - id: ASSUM-003
+    text: "The note identifier is a string id used in the path"
+    basis: "Request uses {id} without stating its type; chose string id over numeric id"
