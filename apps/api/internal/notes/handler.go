@@ -18,6 +18,10 @@ import (
 type Store interface {
 	Create(ctx context.Context, owner, label string) (Note, error)
 	List(ctx context.Context, owner string) ([]Note, error)
+	// SetDone writes the completion flag of one of owner's notes and answers with
+	// the note as storage holds it afterwards. A note the caller does not own is
+	// reported with ErrNoteNotFound, and changes nothing.
+	SetDone(ctx context.Context, owner, id string, done bool) (Note, error)
 }
 
 // Authenticator turns a bearer token into the owner's subject, or refuses it.

@@ -31,12 +31,34 @@ type fakeStore struct {
 	note  Note
 	list  []Note
 	err   error
+
+	// The done-flag write of TASK-F552-001: the call the handler made, and the
+	// note - or failure - storage answers with.
+	doneCtx   context.Context
+	doneCalls int
+	doneOwner string
+	doneID    string
+	doneValue bool
+	doneErr   error
+	doneNote  Note
 }
 
 func (f *fakeStore) Create(ctx context.Context, owner, label string) (Note, error) {
 	f.calls++
 	f.ctx, f.owner, f.label = ctx, owner, label
 	return f.note, f.err
+}
+
+// SetDone records the owner, id and flag it was asked to write, and answers the
+// way PGStore.SetDone does: the updated note on a hit, and nothing but the
+// not-found sentinel on a miss.
+func (f *fakeStore) SetDone(ctx context.Context, owner, id string, done bool) (Note, error) {
+	f.doneCalls++
+	f.doneCtx, f.doneOwner, f.doneID, f.doneValue = ctx, owner, id, done
+	if f.doneErr != nil {
+		return Note{}, f.doneErr
+	}
+	return f.doneNote, nil
 }
 
 func (f *fakeStore) List(ctx context.Context, owner string) ([]Note, error) {
@@ -234,6 +256,14 @@ func (s *storingStore) Create(_ context.Context, owner, label string) (Note, err
 }
 
 func (s *storingStore) List(context.Context, string) ([]Note, error) { return []Note{}, nil }
+
+// SetDone answers with the row as storage holds it after the flag moved: the
+// title and creation time it already carried, beside the flag that was written.
+func (s *storingStore) SetDone(_ context.Context, owner, id string, done bool) (Note, error) {
+	s.calls++
+	s.owner = owner
+	return Note{ID: id, Label: s.label, CreatedAt: created, Done: done}, nil
+}
 
 // createTitle asks the real create handler to store one title, and reports the
 // title the store was handed and the title the response carried.
@@ -811,6 +841,308 @@ func TestListReadsTheDoneColumnAndCreateWritesNoFlag(t *testing.T) {
 	}
 	if strings.Contains(strings.ToLower(inserted[openParen:closeParen]), "done") {
 		t.Fatalf("PGStore.Create writes the completion flag, which no caller may set: %q", inserted)
+	}
+}
+
+// storedRow is one row of the done store's notes table, kept beside the subject
+// that owns it, so a write can be scoped to the caller exactly as the real
+// owner-scoped UPDATE is.
+type storedRow struct {
+	owner string
+	note  Note
+}
+
+// doneStore is the notes table a caller may toggle the completion flag of. It
+// answers a write the way PGStore.SetDone does: the row is looked up by id AND
+// owner, its flag is written, and the whole updated row is read back - so a
+// foreign id is a miss that changes nothing rather than a hit on someone else's
+// note.
+type doneStore struct {
+	rows  []storedRow
+	calls int
+	owner string
+	id    string
+	value bool
+	ctx   context.Context
+}
+
+func (d *doneStore) Create(context.Context, string, string) (Note, error) {
+	return Note{}, errors.New("the done store writes no new note")
+}
+
+func (d *doneStore) List(_ context.Context, owner string) ([]Note, error) {
+	list := []Note{}
+	for _, row := range d.rows {
+		if row.owner == owner {
+			list = append(list, row.note)
+		}
+	}
+	return list, nil
+}
+
+func (d *doneStore) SetDone(ctx context.Context, owner, id string, done bool) (Note, error) {
+	d.calls++
+	d.ctx, d.owner, d.id, d.value = ctx, owner, id, done
+	for i, row := range d.rows {
+		// Both filters of the real UPDATE, applied to one row: a note of another
+		// owner never matches, whatever its id.
+		if row.owner != owner || row.note.ID != id {
+			continue
+		}
+		d.rows[i].note.Done = done
+		updated := d.rows[i].note
+		updated.CreatedAt = updated.CreatedAt.UTC()
+		return updated, nil
+	}
+	return Note{}, ErrNoteNotFound
+}
+
+// The write behind the done flag, as the caller of the storage layer sees it:
+// both toggle directions are answered with the note that now carries the new
+// flag, the store is asked for the signed-in owner, the requested id and the
+// flag exactly as it came in, and a write that matches no row of the caller's
+// answers the not-found sentinel with no note at all.
+func TestSetDoneWritesTheFlagBothWaysAndReportsAMissAsNotFound(t *testing.T) {
+	type contextKey struct{}
+	ctx := context.WithValue(context.Background(), contextKey{}, "trace")
+	for _, flag := range []bool{true, false} {
+		store := &fakeStore{doneNote: Note{ID: "7", Label: "keep it short", CreatedAt: created, Done: flag}}
+		got, err := store.SetDone(ctx, "user-1", "7", flag)
+		if err != nil {
+			t.Fatalf("done %v: %v", flag, err)
+		}
+		if want := (Note{ID: "7", Label: "keep it short", CreatedAt: created, Done: flag}); got != want {
+			t.Fatalf("done %v: answered note %+v, want %+v", flag, got, want)
+		}
+		if store.doneOwner != "user-1" || store.doneID != "7" || store.doneValue != flag {
+			t.Fatalf("done %v: store asked for owner %q id %q flag %v", flag, store.doneOwner, store.doneID, store.doneValue)
+		}
+		if store.doneCtx == nil || store.doneCtx.Value(contextKey{}) != "trace" {
+			t.Fatalf("done %v: the write did not carry the request context", flag)
+		}
+		if store.doneCalls != 1 || store.calls != 0 {
+			t.Fatalf("done %v: %d done writes, %d other calls", flag, store.doneCalls, store.calls)
+		}
+	}
+	// No row of the caller matches the id: the answer is the sentinel the route
+	// maps to 404, and never a zero note dressed up as a real one.
+	miss := &fakeStore{doneErr: ErrNoteNotFound}
+	got, err := miss.SetDone(ctx, "user-1", "999", true)
+	if !errors.Is(err, ErrNoteNotFound) {
+		t.Fatalf("miss: err %v, want ErrNoteNotFound", err)
+	}
+	if got != (Note{}) {
+		t.Fatalf("miss: answered %+v, want no note at all", got)
+	}
+	if miss.doneOwner != "user-1" || miss.doneID != "999" || !miss.doneValue {
+		t.Fatalf("miss: store asked for owner %q id %q flag %v", miss.doneOwner, miss.doneID, miss.doneValue)
+	}
+}
+
+// The write is scoped to the signed-in owner on the row it changes: the flag of
+// the caller's own note moves - and stays moved when it is read back - while a
+// note of another owner is neither changed nor answered, and reads as the same
+// not-found as an id nobody holds.
+func TestSetDoneChangesOnlyTheOwnersOwnRow(t *testing.T) {
+	mine := Note{ID: "7", Label: "mine", CreatedAt: created}
+	theirs := Note{ID: "8", Label: "theirs", CreatedAt: created.Add(-time.Minute)}
+	store := &doneStore{rows: []storedRow{{owner: "user-1", note: mine}, {owner: "user-2", note: theirs}}}
+
+	// Toggle on, then off: both directions answer with the note as it now stands.
+	for _, flag := range []bool{true, false} {
+		got, err := store.SetDone(context.Background(), "user-1", "7", flag)
+		if err != nil {
+			t.Fatalf("done %v: %v", flag, err)
+		}
+		if want := (Note{ID: "7", Label: "mine", CreatedAt: created, Done: flag}); got != want {
+			t.Fatalf("done %v: answered %+v, want %+v", flag, got, want)
+		}
+	}
+	if store.calls != 2 {
+		t.Fatalf("%d writes for two toggles", store.calls)
+	}
+	list, err := store.List(context.Background(), "user-1")
+	if err != nil || len(list) != 1 || list[0].Done {
+		t.Fatalf("the last write reads back as %+v (%v), want the flag false it was set to", list, err)
+	}
+	// Someone else's note is a miss on the caller's write, and stays untouched.
+	got, err := store.SetDone(context.Background(), "user-1", "8", true)
+	if !errors.Is(err, ErrNoteNotFound) || got != (Note{}) {
+		t.Fatalf("foreign note: got %+v err %v, want no note and ErrNoteNotFound", got, err)
+	}
+	if store.rows[1].note != theirs {
+		t.Fatalf("a write for another owner's note changed it to %+v", store.rows[1].note)
+	}
+	// Its own owner can still write it, and an id nobody holds is the same miss.
+	if _, err := store.SetDone(context.Background(), "user-2", "8", true); err != nil {
+		t.Fatalf("owner of note 8 refused: %v", err)
+	}
+	if !store.rows[1].note.Done {
+		t.Fatal("note 8 did not take its owner's write")
+	}
+	if _, err := store.SetDone(context.Background(), "user-1", "999", false); !errors.Is(err, ErrNoteNotFound) {
+		t.Fatalf("missing note: err %v, want ErrNoteNotFound", err)
+	}
+}
+
+// statementTail answers with everything a statement says after a keyword,
+// refusing a statement that never says it.
+func statementTail(t *testing.T, statement, from string) string {
+	t.Helper()
+	upper := strings.ToUpper(statement)
+	start := strings.Index(upper, strings.ToUpper(from))
+	if start < 0 {
+		t.Fatalf("statement %q never says %s", statement, from)
+	}
+	return strings.TrimSpace(statement[start+len(from):])
+}
+
+// storeMethodBindings parses store.go and answers with the SQL statements, the
+// Scan targets, the values bound to the statement's placeholders and the
+// qualified functions of one PGStore method, so a write is checked as it is
+// really written rather than as a copy kept in this test.
+func storeMethodBindings(t *testing.T, method string) (sql, scan, bound, fns []string) {
+	t.Helper()
+	src, err := os.ReadFile("store.go")
+	if err != nil {
+		t.Fatalf("read the store: %v", err)
+	}
+	file, err := parser.ParseFile(token.NewFileSet(), "store.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse the store: %v", err)
+	}
+	declared := false
+	ast.Inspect(file, func(node ast.Node) bool {
+		decl, ok := node.(*ast.FuncDecl)
+		if !ok || decl.Recv == nil || len(decl.Recv.List) == 0 ||
+			!strings.Contains(types.ExprString(decl.Recv.List[0].Type), "PGStore") ||
+			decl.Name.Name != method {
+			return true
+		}
+		declared = true
+		ast.Inspect(decl, func(inner ast.Node) bool {
+			switch e := inner.(type) {
+			case *ast.BasicLit:
+				if e.Kind == token.STRING {
+					if text, err := strconv.Unquote(e.Value); err == nil && strings.Contains(text, "notes") {
+						sql = append(sql, text)
+					}
+				}
+			case *ast.CallExpr:
+				sel, ok := e.Fun.(*ast.SelectorExpr)
+				if !ok {
+					return true
+				}
+				switch sel.Sel.Name {
+				case "Scan":
+					for _, arg := range e.Args {
+						scan = append(scan, types.ExprString(arg))
+					}
+				case "Query", "QueryRow":
+					if len(e.Args) > 2 {
+						for _, arg := range e.Args[2:] {
+							bound = append(bound, types.ExprString(arg))
+						}
+					}
+				default:
+					fns = append(fns, types.ExprString(e.Fun))
+				}
+			}
+			return true
+		})
+		return true
+	})
+	if !declared {
+		t.Fatalf("store.go declares no PGStore method %q", method)
+	}
+	return sql, scan, bound, fns
+}
+
+// statementPart answers with the section of a statement between two keywords,
+// refusing a statement that does not carry them in that order.
+func statementPart(t *testing.T, statement, from, to string) string {
+	t.Helper()
+	upper := strings.ToUpper(statement)
+	start := strings.Index(upper, strings.ToUpper(from))
+	if start < 0 {
+		t.Fatalf("statement %q never says %s", statement, from)
+	}
+	end := strings.Index(upper[start:], strings.ToUpper(to))
+	if end < 0 {
+		t.Fatalf("statement %q says %s but never %s after it", statement, from, to)
+	}
+	return strings.TrimSpace(statement[start+len(from) : start+end])
+}
+
+// The write itself, read out of store.go as it is really written: one UPDATE on
+// notes that sets the done column and filters on both the id and the caller's
+// owner_sub on that same statement, so a foreign note cannot be touched; the
+// whole updated row read back in the same statement - id, label, created_at and
+// done - and scanned into the note the caller answers with, the flag into the
+// boolean field rather than a string; and the flag bound to its placeholder as
+// the Go boolean it is, beside the id and the owner, with no quoted literal and
+// no statement built out of the caller's values.
+func TestSetDoneUpdatesTheOwnersRowAndReadsTheWholeNoteBack(t *testing.T) {
+	statements, scan, bound, fns := storeMethodBindings(t, "SetDone")
+	var updated string
+	for _, statement := range statements {
+		if strings.Contains(strings.ToUpper(strings.TrimSpace(statement)), "UPDATE NOTES") {
+			updated = statement
+		}
+	}
+	if updated == "" {
+		t.Fatal("PGStore.SetDone writes no UPDATE on notes")
+	}
+	lowered := strings.ToLower(updated)
+	if strings.Contains(lowered, "'") || strings.Contains(lowered, "%") {
+		t.Fatalf("PGStore.SetDone builds its statement from literals or caller values: %q", updated)
+	}
+	if set := statementPart(t, updated, "SET", "WHERE"); !strings.Contains(strings.ToLower(set), "done = $") {
+		t.Fatalf("PGStore.SetDone sets %q, which does not write the done flag by placeholder", set)
+	}
+	where := strings.ToLower(statementPart(t, updated, "WHERE", "RETURNING"))
+	for _, filter := range []string{"id = $", "owner_sub = $"} {
+		if !strings.Contains(where, filter) {
+			t.Fatalf("PGStore.SetDone filters %q, which leaves out the %s scope", where, filter)
+		}
+	}
+	returning := statementTail(t, updated, "RETURNING")
+	columns := []string{}
+	for _, column := range strings.Split(returning, ",") {
+		columns = append(columns, strings.TrimSpace(column))
+	}
+	for _, want := range []string{"id", "label", "created_at", "done"} {
+		found := false
+		for _, column := range columns {
+			if column == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("PGStore.SetDone reads back %v, which leaves out %s", columns, want)
+		}
+	}
+	scansFlag := false
+	for _, target := range scan {
+		if target == "&note.Done" {
+			scansFlag = true
+		}
+	}
+	if !scansFlag {
+		t.Fatalf("PGStore.SetDone scans %v, which never fills in the done flag as a boolean", scan)
+	}
+	if len(bound) != 3 || bound[0] != "done" || bound[1] != "noteID" || bound[2] != "owner" {
+		t.Fatalf("PGStore.SetDone binds %v, want the boolean flag, the note id and the owner", bound)
+	}
+	formatsID := false
+	for _, fn := range fns {
+		if fn == "strconv.FormatInt" {
+			formatsID = true
+		}
+	}
+	if !formatsID {
+		t.Fatalf("PGStore.SetDone calls %v, which never shapes the id the way List does", fns)
 	}
 }
 
