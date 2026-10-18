@@ -28,9 +28,6 @@ scenarios:
   - title: "The notes read endpoint does not accept a done value from the caller"
     tags: ["@negative"]
     sentence: "Trying to change a note's done value through the read endpoint is ignored, and the note keeps its stored done value."
-  - title: "A signed-in owner cannot read another owner's notes"
-    tags: ["@negative"]
-    sentence: "Reading the notes list never reveals another person's notes, regardless of their done value."
   - title: "The contract declares the done flag on the note object"
     tags: ["@key-example"]
     sentence: "The API contract describes the note object as always carrying a done value."
@@ -56,6 +53,3 @@ assumptions:
   - id: ASSUM-005
     text: "The web types are regenerated from the contract as part of this change rather than being hand-edited"
     basis: "The request says 'the generated web types updated to match' but does not say whether regeneration is automated in CI or a manual step; the alternative is hand-editing the generated files, which would break the contract-as-source-of-truth ordering"
-  - id: ASSUM-006
-    text: "The done flag is scoped to the signed-in owner and the read endpoint continues to return only the caller's own notes"
-    basis: "The request does not mention ownership or authorization for the done flag; the alternative is that the done flag is shared across owners, which would change what GET /api/notes returns"

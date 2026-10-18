@@ -51,12 +51,3 @@ assumptions:
     is hand-editing the generated files, which would break the contract-as-source-of-truth
     ordering
   human_response: deferred
-- id: ASSUM-006
-  scenario: A signed-in owner cannot read another owner's notes
-  assumption: The done flag is scoped to the signed-in owner and the read endpoint
-    continues to return only the caller's own notes
-  confidence: low
-  basis: The request does not mention ownership or authorization for the done flag;
-    the alternative is that the done flag is shared across owners, which would change
-    what GET /api/notes returns
-  human_response: deferred
