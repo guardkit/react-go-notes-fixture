@@ -1,14 +1,15 @@
 ---
-id: TASK-9018-002
-title: Return the done flag from GET /api/notes
-task_type: feature
-parent_review: TASK-REV-9018
-feature_id: FEAT-9018
-wave: 2
-implementation_mode: task-work
 complexity: 5
 dependencies:
-  - TASK-9018-001
+- TASK-9018-001
+feature_id: FEAT-9018
+id: TASK-9018-002
+implementation_mode: task-work
+parent_review: TASK-REV-9018
+status: design_approved
+task_type: feature
+title: Return the done flag from GET /api/notes
+wave: 2
 ---
 
 Read the new `done` column through the notes store and surface it on every note object returned by `GET /api/notes`, as a JSON boolean that is always present (never omitted when `false`), while leaving the existing fields and the endpoint path unchanged.
