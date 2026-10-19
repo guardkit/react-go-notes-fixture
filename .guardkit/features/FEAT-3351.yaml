@@ -1,0 +1,68 @@
+id: FEAT-3351
+name: "Web App Vitest Security Upgrade (4.0.15 → 4.1.11)"
+description: "Upgrade vitest and @vitest/coverage-v8 from 4.0.15 to exactly 4.1.11 in apps/web, remediating critical security advisory GHSA-5xrq-8626-4rwp while every existing test still passes."
+created: "2026-07-09T14:32:00Z"
+status: planned
+complexity: 4
+estimated_tasks: 2
+
+feature_files:
+  - features/web-app-vitest-security-upgrade-4-0-15-4-1-11/web-app-vitest-security-upgrade-4-0-15-4-1-11.feature
+
+scenario_owners:
+  "Both test tools are pinned to 4.1.11 in the web app manifest": TASK-3351-001
+  "The lockfile resolves the upgraded test tools with no lingering 4.0.15 entries": TASK-3351-001
+  "The security audit no longer reports the critical advisory against the test tools": TASK-3351-001
+  "The resolved test tool versions are exactly 4.1.11 and not a higher 4.x release": TASK-3351-001
+  "The vulnerable 4.0.15 version does not survive anywhere in the resolved tree": TASK-3351-001
+  "The existing test suite passes under the upgraded test tools": TASK-3351-001
+  "No previously passing test fails after the upgrade": TASK-3351-001
+
+tasks:
+  - id: TASK-3351-001
+    name: "Upgrade vitest and @vitest/coverage-v8 to 4.1.11 in apps/web manifest and lockfile"
+    file_path: "tasks/backlog/web-app-vitest-security-upgrade/TASK-3351-001-upgrade-vitest-dependencies.md"
+    complexity: 3
+    dependencies: []
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 30
+
+  - id: TASK-3351-002
+    name: "Verify the existing test suite passes under vitest 4.1.11"
+    file_path: "tasks/backlog/web-app-vitest-security-upgrade/TASK-3351-002-verify-test-suite-green.md"
+    complexity: 2
+    dependencies:
+      - TASK-3351-001
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 20
+
+orchestration:
+  parallel_groups:
+    - - TASK-3351-001
+    - - TASK-3351-002
+  estimated_duration_minutes: 50
+  recommended_parallel: 1
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "Both test tools are pinned to 4.1.11 in the web app manifest":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The lockfile resolves the upgraded test tools with no lingering 4.0.15 entries":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The security audit no longer reports the critical advisory against the test tools":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The existing test suite passes under the upgraded test tools":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The resolved test tool versions are exactly 4.1.11 and not a higher 4.x release":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "The vulnerable 4.0.15 version does not survive anywhere in the resolved tree":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "No previously passing test fails after the upgrade":
+    verifier: "exam"
