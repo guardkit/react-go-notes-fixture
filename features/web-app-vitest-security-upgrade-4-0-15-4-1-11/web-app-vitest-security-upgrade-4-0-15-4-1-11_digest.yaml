@@ -1,0 +1,34 @@
+feature: web-app-vitest-security-upgrade-4-0-15-4-1-11
+generated: "2026-07-09T14:32:00Z"
+scenarios:
+  - title: "Both test tools are pinned to 4.1.11 in the web app manifest"
+    tags: ["@key-example", "@smoke"]
+    sentence: "After the upgrade, the web app's manifest lists both vitest and @vitest/coverage-v8 at exactly version 4.1.11."
+  - title: "The lockfile resolves the upgraded test tools with no lingering 4.0.15 entries"
+    tags: ["@key-example", "@smoke"]
+    sentence: "The lockfile resolves both test tools to 4.1.11 and keeps no leftover 4.0.15 entries for either of them."
+  - title: "The security audit no longer reports the critical advisory against the test tools"
+    tags: ["@key-example", "@smoke"]
+    sentence: "A security audit of the upgraded web app dependency tree no longer flags the critical advisory against either test tool."
+  - title: "The existing test suite passes under the upgraded test tools"
+    tags: ["@key-example", "@smoke"]
+    sentence: "Running the whole existing test suite under the new vitest version keeps every previously passing test passing with no new failures or errors."
+  - title: "The resolved test tool versions are exactly 4.1.11 and not a higher 4.x release"
+    tags: ["@boundary"]
+    sentence: "The installed test tools land on exactly 4.1.11 and never drift to a higher 4.x release."
+  - title: "The vulnerable 4.0.15 version does not survive anywhere in the resolved tree"
+    tags: ["@boundary", "@negative"]
+    sentence: "The old, vulnerable 4.0.15 version of either test tool is nowhere to be found in the resolved dependency tree after the upgrade."
+  - title: "No previously passing test fails after the upgrade"
+    tags: ["@negative"]
+    sentence: "Not one test that passed before the upgrade fails or errors afterwards."
+assumptions:
+  - id: ASSUM-001
+    text: "The target version is pinned exactly at 4.1.11 rather than a caret range that could resolve higher"
+    basis: "The request states 'from 4.0.15 to 4.1.11' and the input constraint says 'Target version is exactly 4.1.11', but the manifest entry format (exact pin vs caret range) is not shown in the supplied code; the alternative is a caret range such as ^4.1.11 that the resolver could drift above"
+  - id: ASSUM-002
+    text: "A baseline of the currently passing test suite under vitest 4.0.15 exists against which 'all existing tests must still pass' can be compared"
+    basis: "ASM-005 (input, medium confidence) states this; the alternative is that pre-existing flaky or failing tests exist, making the acceptance criterion ambiguous"
+  - id: ASSUM-003
+    text: "Remediating GHSA-5xrq-8626-4rwp by moving to 4.1.11 is sufficient closure; no compensating controls or temporary mitigations are needed in the interim"
+    basis: "ASM-004 (input, medium confidence) states this; the alternative is that interim measures (dependency overrides, audit suppressions, expedited release) are required before the upgrade ships"

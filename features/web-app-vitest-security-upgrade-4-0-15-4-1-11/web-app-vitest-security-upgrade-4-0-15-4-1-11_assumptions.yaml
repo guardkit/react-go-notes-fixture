@@ -1,0 +1,34 @@
+feature: Web App Vitest Security Upgrade (4.0.15 → 4.1.11)
+generated: '2026-07-09T14:32:00Z'
+stack: generic
+review_required: true
+assumptions:
+- id: ASSUM-001
+  scenario: The resolved test tool versions are exactly 4.1.11 and not a higher 4.x
+    release
+  assumption: The target version is pinned exactly at 4.1.11 rather than a caret range
+    that could resolve higher
+  confidence: low
+  basis: The request states 'from 4.0.15 to 4.1.11' and the input constraint says
+    'Target version is exactly 4.1.11', but the manifest entry format (exact pin vs
+    caret range) is not shown in the supplied code; the alternative is a caret range
+    such as ^4.1.11 that the resolver could drift above
+  human_response: deferred
+- id: ASSUM-002
+  scenario: The existing test suite passes under the upgraded test tools
+  assumption: A baseline of the currently passing test suite under vitest 4.0.15 exists
+    against which 'all existing tests must still pass' can be compared
+  confidence: low
+  basis: ASM-005 (input, medium confidence) states this; the alternative is that pre-existing
+    flaky or failing tests exist, making the acceptance criterion ambiguous
+  human_response: deferred
+- id: ASSUM-003
+  scenario: The security audit no longer reports the critical advisory against the
+    test tools
+  assumption: Remediating GHSA-5xrq-8626-4rwp by moving to 4.1.11 is sufficient closure;
+    no compensating controls or temporary mitigations are needed in the interim
+  confidence: low
+  basis: ASM-004 (input, medium confidence) states this; the alternative is that interim
+    measures (dependency overrides, audit suppressions, expedited release) are required
+    before the upgrade ships
+  human_response: deferred
