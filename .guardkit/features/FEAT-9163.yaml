@@ -1,0 +1,44 @@
+id: FEAT-9163
+name: "README Test Documentation Update"
+description: "Add a short section to the README explaining how to run the web app's tests and coverage report locally, using only the commands the project already declares."
+created: "2026-07-09T14:32:00Z"
+status: planned
+complexity: 2
+estimated_tasks: 1
+feature_files:
+  - features/readme-test-documentation-update/readme-test-documentation-update.feature
+
+tasks:
+  - id: TASK-9163-001
+    name: "Add local test and coverage instructions to README"
+    file_path: "tasks/backlog/readme-test-documentation-update/TASK-9163-001-add-local-test-and-coverage-instructions-to-readme.md"
+    complexity: 2
+    dependencies: []
+    status: pending
+    implementation_mode: direct
+    estimated_minutes: 30
+
+orchestration:
+  parallel_groups:
+    - - TASK-9163-001
+  estimated_duration_minutes: 30
+  recommended_parallel: 1
+
+scenario_owners:
+  "README documents the declared test command": TASK-9163-001
+  "README documents the declared coverage command": TASK-9163-001
+  "README introduces no command the project does not declare": TASK-9163-001
+  "README change is confined to the new section": TASK-9163-001
+scenarios:
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "README documents the declared test command":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "README documents the declared coverage command":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "README introduces no command the project does not declare":
+    verifier: "exam"
+  # stamped by the model — no rule (R1-R10) could decide this title
+  "README change is confined to the new section":
+    verifier: "exam"

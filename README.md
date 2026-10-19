@@ -250,6 +250,23 @@ None of them collides with api_test's ports (8901, 8902, 8924, 8925).
 The factory's build runner and deploy helper in that sandbox belong to the sandbox, not to
 this repository, so this profile does not declare them.
 
+## Running the web app's tests and coverage locally
+
+The web app's tests are Vitest. Both commands below are already declared:
+`scripts/check.sh` runs the test script and `scripts/coverage.sh` runs the coverage
+script, each against the `sample-web` workspace. From the repository root:
+
+```bash
+npm --workspace sample-web run test
+npm --workspace sample-web run coverage
+```
+
+Those are the same two scripts the `web` component declares in `.guardkit/config.yaml`
+with `cwd: "apps/web"`, where they read `npm run test` and `npm run coverage` — the
+`test` and `coverage` scripts in `apps/web/package.json`. Coverage is measured, never
+thresholded: exit 0 means the tests passed with coverage measured, and the report stays
+in the git-ignored `apps/web/coverage` folder.
+
 ## Verification so far (12–13 October 2026)
 
 - **Native checks.** `scripts/install.sh` and `scripts/check.sh` pass with the pinned
