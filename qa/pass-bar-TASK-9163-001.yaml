@@ -1,0 +1,75 @@
+# --------------------------------------------------------------------------
+# DOCUMENTATION TASK — NOT A COPY OF THE FEATURE CHECKLIST
+#
+# The plan types TASK-9163-001 as a documentation task, and guardkit runs
+# no tests for that type (documentation profile: tests_required =
+# false). So the feature's machine criteria — how the running
+# endpoint behaves — are left off this bar: this task edits
+# documents and could never produce that evidence. They are still
+# carried by the feature's other tasks and answered by the live gate.
+# The criteria below are the ones written on the task itself,
+# in tasks/backlog/readme-test-documentation-update/TASK-9163-001-add-local-test-and-coverage-instructions-to-readme.md under '## Acceptance Criteria' — what the build
+# actually holds this task to.
+# They are classed 'machine' with evidence kind 'log' because there is
+# no operator runbook to route an operator criterion to, and the live
+# evidence kinds would arm the feature-complete runtime-surface gate
+# off a documentation task.
+#
+# Written by forge's planning driver on 2026-10-19.
+# --------------------------------------------------------------------------
+format_version: '2.0'
+task_id: TASK-9163-001
+registered_at:
+  sha: 4edf909a58ef156710dfbede46312b04e1f176a4
+  date: '2026-10-19'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: AC-1
+  text: The README contains a new short section explaining how to run the web app's
+    tests locally.
+  class: machine
+  evidence_kind: log
+  runbook_ref: null
+- id: AC-2
+  text: That section names the declared test command exactly as the project declares
+    it (copied verbatim from the project configuration — e.g. the `test` script in
+    `apps/web/package.json` or the equivalent declared command in `scripts/check.sh`).
+  class: machine
+  evidence_kind: log
+  runbook_ref: null
+- id: AC-3
+  text: The README contains a new short section (or the same section) explaining how
+    to generate the web app's coverage report locally.
+  class: machine
+  evidence_kind: log
+  runbook_ref: null
+- id: AC-4
+  text: That section names the declared coverage command exactly as the project declares
+    it (copied verbatim from the project configuration — e.g. the `coverage` script
+    in `apps/web/package.json` or `scripts/coverage.sh`).
+  class: machine
+  evidence_kind: log
+  runbook_ref: null
+- id: AC-5
+  text: Every command shown in the new section is a command the project already declares;
+    the section introduces no new command, tool, or workflow.
+  class: machine
+  evidence_kind: log
+  runbook_ref: null
+- id: AC-6
+  text: The rest of the README is unchanged from its previous content — only the new
+    section is added.
+  class: machine
+  evidence_kind: log
+  runbook_ref: null
+- id: AC-7
+  text: All modified files pass project-configured lint/format checks with zero errors.
+  class: machine
+  evidence_kind: log
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation
