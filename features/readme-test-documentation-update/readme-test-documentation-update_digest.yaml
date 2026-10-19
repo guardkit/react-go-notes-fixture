@@ -1,0 +1,40 @@
+feature: readme-test-documentation-update
+generated: "2026-07-09T14:32:00Z"
+scenarios:
+  - title: "README documents the declared test command"
+    tags: ["@key-example", "@smoke"]
+    sentence: "The README tells a developer how to run the web app's tests locally by naming the test command exactly as the project already declares it."
+  - title: "README documents the declared coverage command"
+    tags: ["@key-example", "@smoke"]
+    sentence: "The README tells a developer how to generate the web app's coverage report locally by naming the coverage command exactly as the project already declares it."
+  - title: "README introduces no command the project does not declare"
+    tags: ["@negative"]
+    sentence: "The new section shows only commands the project already declares and never invents a new command, tool, or workflow."
+  - title: "README change is confined to the new section"
+    tags: ["@negative"]
+    sentence: "Adding the new section leaves every other part of the README exactly as it was."
+  - title: "Coverage instructions follow the test instructions in the same section"
+    tags: ["@edge-case"]
+    sentence: "The coverage instructions sit in the same section as the test instructions and come after them."
+  - title: "Section requires no additional setup beyond the declared commands"
+    tags: ["@edge-case"]
+    sentence: "Following the new section needs no extra setup beyond running the commands the project already declares."
+assumptions:
+  - id: ASSUM-001
+    text: "The project configuration declares a command to run the web app's test suite"
+    basis: "Input asserts commands are 'already declared' but does not name the file or command; the open question asks which configuration file (package.json, Makefile, pyproject.toml) is authoritative. Chosen option: a declared test command exists; alternative: no declared command exists and scope would expand."
+  - id: ASSUM-002
+    text: "The project configuration declares a command to generate the web app's coverage report"
+    basis: "Input asserts commands are 'already declared' but does not name the file or command; the open question asks which configuration file is authoritative. Chosen option: a declared coverage command exists; alternative: no declared coverage command exists and scope would expand."
+  - id: ASSUM-003
+    text: "The README exists and is the appropriate location for this documentation"
+    basis: "Input assumes the README is the target; the open question asks whether the README exists and is the standard location. Chosen option: README exists and is the right location; alternative: README must be created or a different file located."
+  - id: ASSUM-004
+    text: "No environment-specific prerequisites (e.g., virtual environment activation) are required beyond the declared commands"
+    basis: "Open question asks whether environment-specific prerequisites must be mentioned. Chosen option: no prerequisites beyond the declared commands; alternative: prerequisites such as virtual environment activation must be documented."
+  - id: ASSUM-005
+    text: "Test and coverage instructions are presented together in a single section, with coverage following tests"
+    basis: "Input says 'a short section' (singular) and FEAT-PO-002 depends_on FEAT-PO-001. Chosen option: one combined section with coverage after tests; alternative: separate sections or a different ordering."
+  - id: ASSUM-006
+    text: "The declared commands are copied verbatim from the project configuration without modification"
+    basis: "Constraint 'Must use only commands already declared in the project' is stated but the exact command strings are not supplied. Chosen option: copy the declared command strings verbatim; alternative: paraphrase or reformat the commands."
