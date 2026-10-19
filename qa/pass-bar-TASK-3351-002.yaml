@@ -1,0 +1,34 @@
+format_version: '2.0'
+task_id: TASK-3351-002
+registered_at:
+  sha: 688e573fd6295196392ea5471024f568afd0590c
+  date: '2026-10-19'
+auth_surface_bearing: false
+preconditions:
+- suite_green_vs_ledger
+- analyze_clean
+- build_artifact
+criteria:
+- id: web-app-vitest-security-upgrade-4-0-15-4-1-11-AC-001
+  text: Both test tools are pinned to 4.1.11 in the web app manifest
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: web-app-vitest-security-upgrade-4-0-15-4-1-11-AC-002
+  text: The lockfile resolves the upgraded test tools with no lingering 4.0.15 entries
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: web-app-vitest-security-upgrade-4-0-15-4-1-11-AC-003
+  text: The security audit no longer reports the critical advisory against the test
+    tools
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+- id: web-app-vitest-security-upgrade-4-0-15-4-1-11-AC-004
+  text: The existing test suite passes under the upgraded test tools
+  class: machine
+  evidence_kind: screenshot
+  runbook_ref: null
+negative_paths:
+- dependency_down_degradation
