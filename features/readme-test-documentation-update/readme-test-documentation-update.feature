@@ -21,8 +21,8 @@ Feature: README Test Documentation Update
   @key-example @smoke
   Scenario: README documents the declared test command
     Given the project configuration declares a command to run the web app's test suite
-    When the README is reviewed for local test instructions
-    Then the README contains a section explaining how to run the web app's tests locally
+    When a developer reads the README to find how to run the web app's tests locally
+    Then the README presents a section explaining how to run the web app's tests locally
     And that section names the declared test command exactly as the project declares it
 
   # Why: FEAT-PO-002 — the README must tell a developer how to generate the coverage report locally
@@ -30,15 +30,15 @@ Feature: README Test Documentation Update
   @key-example @smoke
   Scenario: README documents the declared coverage command
     Given the project configuration declares a command to generate the web app's coverage report
-    When the README is reviewed for local coverage instructions
-    Then the README contains a section explaining how to generate the web app's coverage report locally
+    When a developer reads the README to find how to generate the web app's coverage report locally
+    Then the README presents a section explaining how to generate the web app's coverage report locally
     And that section names the declared coverage command exactly as the project declares it
 
   # Why: Constraint "Must use only commands already declared in the project" — no invented commands
   # [ASSUMPTION: confidence=low] The declared commands are copied verbatim from the project configuration without modification
   @negative
   Scenario: README introduces no command the project does not declare
-    When the README is reviewed for local test and coverage instructions
+    When a developer reads the new section of the README for local test and coverage instructions
     Then every command shown in the new section is a command the project already declares
     And the section introduces no new command, tool, or workflow
 
@@ -46,4 +46,4 @@ Feature: README Test Documentation Update
   @negative
   Scenario: README change is confined to the new section
     When the README is updated with the new test and coverage section
-    Then the rest of the README is unchanged from its previous content
+    Then a developer reading the README sees the rest of the README unchanged from its previous content
