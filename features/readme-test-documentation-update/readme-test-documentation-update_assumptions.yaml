@@ -32,24 +32,6 @@ assumptions:
     the right location; alternative: README must be created or a different file located.'
   human_response: deferred
 - id: ASSUM-004
-  scenario: Section requires no additional setup beyond the declared commands
-  assumption: No environment-specific prerequisites (e.g., virtual environment activation)
-    are required beyond the declared commands
-  confidence: low
-  basis: 'Open question asks whether environment-specific prerequisites must be mentioned.
-    Chosen option: no prerequisites beyond the declared commands; alternative: prerequisites
-    such as virtual environment activation must be documented.'
-  human_response: deferred
-- id: ASSUM-005
-  scenario: Coverage instructions follow the test instructions in the same section
-  assumption: Test and coverage instructions are presented together in a single section,
-    with coverage following tests
-  confidence: low
-  basis: 'Input says ''a short section'' (singular) and FEAT-PO-002 depends_on FEAT-PO-001.
-    Chosen option: one combined section with coverage after tests; alternative: separate
-    sections or a different ordering.'
-  human_response: deferred
-- id: ASSUM-006
   scenario: README introduces no command the project does not declare
   assumption: The declared commands are copied verbatim from the project configuration
     without modification

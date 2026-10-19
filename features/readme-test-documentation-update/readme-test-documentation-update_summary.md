@@ -2,15 +2,15 @@
 
 **Stack**: generic (stack undeclared in the request; recorded as generic rather than guessed)
 **Generated**: 2026-07-09T14:32:00Z
-**Scenarios**: 6 total (2 smoke, 0 regression)
-**Assumptions**: 6 total (0 high / 0 medium / 6 low confidence)
+**Scenarios**: 4 total (2 smoke, 0 regression)
+**Assumptions**: 4 total (0 high / 0 medium / 4 low confidence)
 **Review required**: Yes
 
 REVIEW REQUIRED: all assumptions unconfirmed (--auto mode)
 
 ## Scope
 
-This specification covers adding a single short section to the project README that explains how to run the web app's test suite and generate its coverage report locally, using only the commands the project already declares. It pins that the section names the declared test and coverage commands verbatim, introduces no new command or tool, leaves the rest of the README unchanged, and presents coverage as a follow-on to running tests. The request is sparse on concrete command strings and configuration-file names, so those are carried as low-confidence assumptions rather than invented.
+This specification covers adding a single short section to the project README that explains how to run the web app's test suite and generate its coverage report locally, using only the commands the project already declares. It pins that the section names the declared test and coverage commands verbatim, introduces no new command or tool, and leaves the rest of the README unchanged. The request is sparse on concrete command strings and configuration-file names, so those are carried as low-confidence assumptions rather than invented.
 
 ## Scenario Counts by Category
 
@@ -19,7 +19,7 @@ This specification covers adding a single short section to the project README th
 | Key examples (@key-example) | 2 |
 | Boundary conditions (@boundary) | 0 |
 | Negative cases (@negative) | 2 |
-| Edge cases (@edge-case) | 2 |
+| Edge cases (@edge-case) | 0 |
 
 ## Deferred Items
 
@@ -30,9 +30,7 @@ None. No scenario groups were deferred.
 - ASSUM-001 — The project configuration declares a command to run the web app's test suite
 - ASSUM-002 — The project configuration declares a command to generate the web app's coverage report
 - ASSUM-003 — The README exists and is the appropriate location for this documentation
-- ASSUM-004 — No environment-specific prerequisites (e.g., virtual environment activation) are required beyond the declared commands
-- ASSUM-005 — Test and coverage instructions are presented together in a single section, with coverage following tests
-- ASSUM-006 — The declared commands are copied verbatim from the project configuration without modification
+- ASSUM-004 — The declared commands are copied verbatim from the project configuration without modification
 
 ## Integration with /feature-plan
 
@@ -46,5 +44,3 @@ This summary can be passed to `/feature-plan` as a context file:
 - "README documents the declared coverage command" → toolchain
 - "README introduces no command the project does not declare" → toolchain
 - "README change is confined to the new section" → toolchain
-- "Coverage instructions follow the test instructions in the same section" → toolchain
-- "Section requires no additional setup beyond the declared commands" → toolchain
